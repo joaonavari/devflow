@@ -1,0 +1,28 @@
+{
+  "name": "@devflow/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "predev": "npm run db:generate",
+    "build": "npm run db:generate && tsc --project tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "npm run db:generate && tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:check": "npm run db:generate && tsx src/scripts/check-db.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "express": "5.2.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "tsx": "^4.20.6"
+  }
+}

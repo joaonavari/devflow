@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+backend/src/generated/
+package-lock.json
+.env*
+backend/prisma/schema.prisma

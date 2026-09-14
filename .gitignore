@@ -1,0 +1,23 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+backend/src/generated/
+
+# Local environment files and credentials
+.env*
+!.env.example
+*.pem
+*.key
+
+# Local tooling and operating system
+.DS_Store
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+.cache/
+
+# Local PostgreSQL data, if a bind mount is used later
+.postgres/

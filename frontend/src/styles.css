@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: #090b0f;
+  --color-surface: #11141a;
+  --color-border: #232730;
+  --color-primary: #f5f7fa;
+  --color-secondary: #9ca3af;
+  --color-accent: #3b82f6;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: system-ui, sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-primary);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+}

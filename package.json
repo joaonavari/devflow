@@ -1,0 +1,56 @@
+{
+  "name": "devflow",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=24.13.0 <25",
+    "npm": ">=11 <12"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others --names api,web --prefix-colors blue,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace @devflow/frontend",
+    "dev:backend": "npm run dev --workspace @devflow/backend",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspace @devflow/backend",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "npm run lint -- --fix",
+    "typecheck": "npm run typecheck --workspaces",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run db:validate && npm run db:generate && npm run lint && npm run typecheck && npm run format:check && npm run build",
+    "db:up": "docker compose up --detach --wait db",
+    "db:down": "docker compose down",
+    "db:status": "docker compose ps",
+    "db:logs": "docker compose logs --follow db",
+    "db:generate": "npm run db:generate --workspace @devflow/backend",
+    "db:validate": "npm run db:validate --workspace @devflow/backend",
+    "db:migrate": "npm run db:migrate --workspace @devflow/backend --",
+    "db:migrate:deploy": "npm run db:migrate:deploy --workspace @devflow/backend --",
+    "db:check": "npm run db:check --workspace @devflow/backend"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.4",
+    "concurrently": "9.2.4",
+    "eslint": "10.10.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "^17.0.0",
+    "prettier": "^3.6.2",
+    "prisma": "7.10.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0"
+  },
+  "overrides": {
+    "@prisma/config@7.10.0": {
+      "deepmerge-ts": "8.0.2"
+    },
+    "prisma@7.10.0": {
+      "mysql2": "3.24.4"
+    }
+  }
+}
