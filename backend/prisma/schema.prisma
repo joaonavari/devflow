@@ -10,6 +10,14 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id           String        @id @default(uuid()) @db.Uuid
   name         String        @db.VarChar(100)
@@ -20,6 +28,7 @@ model User {
   updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
   sessions     AuthSession[]
   clients      Client[]
+  projects     Project[]
 }
 
 model AuthSession {
@@ -47,6 +56,28 @@ model Client {
   createdAt  DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects   Project[]
 
   @@index([userId, archivedAt, name, id])
+}
+
+model Project {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  clientId    String        @db.Uuid
+  name        String        @db.VarChar(120)
+  description String?       @db.VarChar(2000)
+  status      ProjectStatus @default(PLANNING)
+  startDate   DateTime      @db.Date
+  dueDate     DateTime?     @db.Date
+  budget      Decimal       @default(0) @db.Decimal(12, 2)
+  progress    Int           @default(0) @db.SmallInt
+  archivedAt  DateTime?     @db.Timestamptz(3)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  @@index([userId, archivedAt, status, name, id])
+  @@index([userId, clientId, archivedAt])
 }

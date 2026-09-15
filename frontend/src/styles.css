@@ -2,6 +2,7 @@
 @import './styles/tokens.css';
 @import './styles/auth.css';
 @import './styles/clients.css';
+@import './styles/projects.css';
 
 @layer base {
   :root {

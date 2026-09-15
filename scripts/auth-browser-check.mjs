@@ -12,6 +12,7 @@ const sockets = [];
 const exceptions = [];
 let refreshRequests = 0;
 let clientRequests = 0;
+let projectRequests = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function connect(url) {
@@ -45,6 +46,11 @@ async function connect(url) {
       message.params.request.url.includes('/api/v1/clients')
     )
       clientRequests++;
+    if (
+      message.method === 'Network.requestWillBeSent' &&
+      message.params.request.url.includes('/api/v1/projects')
+    )
+      projectRequests++;
   });
   return (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -139,6 +145,14 @@ async function page(browser, context) {
   };
   const click = (selector) =>
     evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const setValue = (selector, value) =>
+    evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      const setter = Object.getOwnPropertyDescriptor(element.constructor.prototype, 'value').set;
+      setter.call(element, ${JSON.stringify(value)});
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
   const viewport = (width) =>
     send('Emulation.setDeviceMetricsOverride', {
       width,
@@ -163,6 +177,7 @@ async function page(browser, context) {
     fill,
     fillSelector,
     click,
+    setValue,
     viewport,
     screenshot,
   };
@@ -401,12 +416,131 @@ try {
   await tab.until('!!document.querySelector(".clients-table [data-client-link]")');
   console.log('PASS: arquivamento remove dos ativos, filtro de arquivados e restauração.');
 
-  await tab.click('.clients-table [data-client-link]');
+  const clientPath = await tab.evaluate(
+    'document.querySelector(".clients-table [data-client-link]").getAttribute("href")',
+  );
+  const clientId = clientPath.split('/').at(-1);
+  const projectsStart = projectRequests;
+  await tab.navigate('/projetos');
+  await tab.until('document.body.innerText.includes("Crie seu primeiro projeto")');
+  await tab.screenshot('projects-empty-desktop');
+  await tab.click('[data-project-action="new"]');
+  await tab.until('document.querySelector(".project-dialog").open');
+  await tab.until('document.activeElement.name === "name"');
+  await tab.fill('name', 'Portal Navari');
+  await tab.setValue('[name="clientId"]', clientId);
+  await tab.fill('description', 'Entrega digital da nova operação.');
+  await tab.setValue('[name="startDate"]', '2026-09-15');
+  await tab.setValue('[name="dueDate"]', '2026-11-30');
+  await tab.fill('budget', '12500.50');
+  await tab.setValue('[name="progress"]', '10');
+  await tab.click('[data-project-action="create"]');
+  await tab.until(
+    'document.body.innerText.includes("Portal Navari foi cadastrado com sucesso.") && !!document.querySelector(".projects-table [data-project-link]")',
+  );
+  await tab.screenshot('projects-list-desktop');
+  console.log('PASS: criação de projeto com cliente ativo atualiza a lista sem reload.');
+
+  await tab.fillSelector('#project-search', 'Navari Studio Atualizado');
+  await tab.until(
+    'document.querySelectorAll(".projects-table tbody tr").length === 1 && document.body.innerText.includes("Portal Navari")',
+  );
+  await tab.fillSelector('#project-search', 'sem resultado');
+  await tab.until('document.body.innerText.includes("Nenhum projeto encontrado")');
+  await tab.click('.text-action');
+  await tab.until('!!document.querySelector(".projects-table [data-project-link]")');
+  await tab.setValue('[data-project-filter="status"]', 'PLANNING');
+  await tab.until('document.querySelectorAll(".projects-table tbody tr").length === 1');
+  await tab.setValue('[data-project-filter="client"]', clientId);
+  await tab.until('document.querySelectorAll(".projects-table tbody tr").length === 1');
+  console.log('PASS: busca por cliente e filtros de status e cliente.');
+
+  await tab.viewport(390);
+  await tab.until('!!document.querySelector(".projects-mobile-list [data-project-link]")');
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.screenshot('projects-list-mobile');
+  await tab.viewport(320);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.viewport(1440);
+  await tab.click('.projects-table [data-project-link]');
+  await tab.until(
+    'location.pathname.startsWith("/projetos/") && document.querySelector("h1")?.textContent === "Portal Navari"',
+  );
+  const projectPath = await tab.evaluate('location.pathname');
+  await tab.fill('name', 'Portal Navari 2.0');
+  await tab.setValue('[name="status"]', 'IN_PROGRESS');
+  await tab.setValue('[name="progress"]', '65');
+  await tab.fill('budget', '15000.75');
+  await tab.setValue('[name="dueDate"]', '2026-12-15');
+  await tab.click('[data-project-action="save"]');
+  await tab.until(
+    'document.body.innerText.includes("Portal Navari 2.0 foi atualizado com sucesso.") && document.body.innerText.includes("65%")',
+  );
+  await tab.screenshot('project-detail-desktop');
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("h1")?.textContent === "Portal Navari 2.0" && document.querySelector("[name=progress]")?.value === "65" && document.querySelector("[name=status]")?.value === "IN_PROGRESS"',
+  );
+  console.log('PASS: detalhe, edição de status/progresso/orçamento e persistência após reload.');
+
+  await tab.navigate(clientPath);
   await tab.until('!!document.querySelector("[data-client-action=delete]")');
   await tab.click('[data-client-action="delete"]');
   await tab.until('document.querySelector(".confirmation-dialog").open');
   assert.equal(await tab.evaluate('document.activeElement.textContent.trim()'), 'Cancelar');
   await tab.screenshot('client-delete-confirmation');
+  await tab.click('[data-client-action="confirm-delete"]');
+  await tab.until(
+    'document.querySelector(".confirmation-dialog").open && document.body.innerText.includes("possui projetos e não pode ser excluído")',
+  );
+  await tab.screenshot('client-delete-blocked');
+  await tab.click('.confirmation-dialog .secondary-button');
+  await tab.until('!document.querySelector(".confirmation-dialog").open');
+  console.log('PASS: cliente com projeto recebe bloqueio 409 com feedback claro.');
+
+  await tab.navigate(projectPath);
+  await tab.click('[data-project-action="archive"]');
+  await tab.until(
+    'document.body.innerText.includes("Projeto arquivado com sucesso.") && !!document.querySelector("[data-project-action=restore]")',
+  );
+  await tab.navigate('/projetos');
+  await tab.until('document.body.innerText.includes("Crie seu primeiro projeto")');
+  await tab.click('[data-project-view="archived"]');
+  await tab.until('!!document.querySelector(".projects-table [data-project-link]")');
+  await tab.click('.projects-table [data-project-link]');
+  await tab.until('!!document.querySelector("[data-project-action=restore]")');
+  await tab.click('[data-project-action="restore"]');
+  await tab.until(
+    'document.body.innerText.includes("Projeto restaurado com sucesso.") && !!document.querySelector("[data-project-action=archive]")',
+  );
+  console.log('PASS: arquivamento, visualização dos arquivados e restauração do projeto.');
+
+  await tab.click('[data-project-action="delete"]');
+  await tab.until('document.querySelector(".confirmation-dialog").open');
+  assert.equal(await tab.evaluate('document.activeElement.textContent.trim()'), 'Cancelar');
+  await tab.click('[data-project-action="confirm-delete"]');
+  await tab.until(
+    'location.pathname === "/projetos" && document.body.innerText.includes("foi excluído permanentemente") && document.body.innerText.includes("Crie seu primeiro projeto")',
+  );
+  const settledProjectRequests = projectRequests;
+  await delay(500);
+  assert.equal(projectRequests, settledProjectRequests);
+  assert(projectRequests - projectsStart < 45);
+  console.log('PASS: confirmação, exclusão permanente do projeto e nenhuma chamada em loop.');
+
+  await tab.navigate(clientPath);
+  await tab.click('[data-client-action="delete"]');
+  await tab.until('document.querySelector(".confirmation-dialog").open');
   await tab.click('[data-client-action="confirm-delete"]');
   await tab.until(
     'location.pathname === "/clientes" && document.body.innerText.includes("foi excluído permanentemente") && document.body.innerText.includes("Cadastre seu primeiro cliente")',
@@ -415,7 +549,9 @@ try {
   await delay(500);
   assert.equal(clientRequests, settledClientRequests);
   assert(clientRequests - clientsStart < 30);
-  console.log('PASS: confirmação acessível, exclusão permanente e nenhuma chamada em loop.');
+  console.log(
+    'PASS: cliente pode ser excluído após a remoção do projeto e não há chamadas em loop.',
+  );
 
   await tab.viewport(390);
   await tab.click('.mobile-menu-trigger');

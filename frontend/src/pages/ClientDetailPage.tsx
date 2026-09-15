@@ -66,8 +66,12 @@ export function ClientDetailPage() {
         replace: true,
         state: { notice: `${client.name} foi excluído permanentemente.` },
       });
-    } catch {
-      setDeleteError('Não foi possível excluir o cliente. Tente novamente.');
+    } catch (error) {
+      setDeleteError(
+        error instanceof ClientApiError
+          ? error.message
+          : 'Não foi possível excluir o cliente. Tente novamente.',
+      );
     }
   }
 

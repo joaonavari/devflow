@@ -3,22 +3,24 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 4 — Clientes
+## Estado atual: Etapa 5 — Projetos
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
-- Prisma com `User`, `AuthSession`, `Client` e migrations aplicadas ao PostgreSQL.
+- Prisma com `User`, `AuthSession`, `Client`, `Project` e migrations aplicadas ao PostgreSQL.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
 - Cadastro, login, logout, restauração e rotação de sessão integrados à API real.
 - CRUD real de clientes com busca, arquivamento, restauração e isolamento por usuário.
+- CRUD real de projetos com busca, filtros, progresso, orçamento e isolamento por usuário.
 - Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-Projetos, tarefas, Kanban, horas, financeiro, dashboard funcional, portal do cliente
-e CI/CD não fazem parte desta entrega. Essas áreas continuam com os placeholders
-aprovados da Etapa 2. Consulte os relatórios da
+Tarefas, Kanban, horas, financeiro, dashboard funcional, portal do cliente e CI/CD
+não fazem parte desta entrega. Essas áreas continuam com os placeholders aprovados
+da Etapa 2. Consulte os relatórios da
 [Etapa 3](docs/etapa-3-autenticacao.md) e da
-[Etapa 4](docs/etapa-4-clientes.md) para decisões e resultados de validação.
+[Etapa 4](docs/etapa-4-clientes.md), além do relatório da
+[Etapa 5](docs/etapa-5-projetos.md), para decisões e resultados de validação.
 
 ## Pré-requisitos
 
@@ -150,9 +152,10 @@ npm run db:validate
 npm run db:generate
 ```
 
-O schema define o provider PostgreSQL, `User`, `AuthSession` e `Client`. As migrations
-`20260915024133_stage3_authentication` e `20260915032455_stage4_clients` criam as
-tabelas, índices e relações. O
+O schema define o provider PostgreSQL, `User`, `AuthSession`, `Client` e `Project`.
+As migrations `20260915024133_stage3_authentication`,
+`20260915032455_stage4_clients` e `20260915174001_stage5_projects` criam as tabelas,
+índices, constraints e relações. O
 Prisma está fixado na versão 7.10.0, com o adaptador PostgreSQL da mesma
 versão. O client gerado fica em `backend/src/generated/prisma/`, ignorado pelo Git,
 e é incluído na compilação do backend.
@@ -221,10 +224,11 @@ DevFlow/
 │   ├── public/           # Favicon local
 │   ├── src/
 │   │   ├── clients/      # API, schemas e formatação do domínio de clientes
-│   │   ├── components/   # Navegação, autenticação e componentes de clientes
+│   │   ├── projects/     # API, schemas e formatação do domínio de projetos
+│   │   ├── components/   # Navegação, autenticação e componentes de domínio
 │   │   ├── layouts/      # Estrutura autenticada responsiva
 │   │   ├── auth/         # Estado de sessão, cliente HTTP e proteção de rotas
-│   │   ├── pages/        # Login, cadastro, clientes, placeholders e 404
+│   │   ├── pages/        # Login, cadastro, clientes, projetos, placeholders e 404
 │   │   ├── routes/       # Definição das rotas e metadados da navegação
 │   │   ├── styles/       # Tokens centralizados do design system
 │   │   ├── App.tsx
@@ -234,14 +238,14 @@ DevFlow/
 │   ├── vite.config.ts    # React, Tailwind e proxy local
 │   └── tsconfig.json
 ├── backend/
-│   ├── prisma/           # Schema e migrations de autenticação e clientes
+│   ├── prisma/           # Schema e migrations da aplicação
 │   ├── src/
 │   │   ├── config/       # Ambiente e client Prisma
-│   │   ├── controllers/  # Respostas HTTP de autenticação e clientes
+│   │   ├── controllers/  # Respostas HTTP dos domínios
 │   │   ├── middlewares/  # Autenticação, origem/CSRF e erros
-│   │   ├── routes/       # Health check, autenticação e clientes
+│   │   ├── routes/       # Health check, autenticação, clientes e projetos
 │   │   ├── scripts/      # Diagnóstico de conexão
-│   │   ├── services/     # Diagnóstico, sessões e domínio de clientes
+│   │   ├── services/     # Diagnóstico, sessões e domínios de negócio
 │   │   ├── tests/        # Testes HTTP com PostgreSQL real
 │   │   ├── validators/   # Schemas de entrada Zod
 │   │   ├── app.ts        # Composição do Express
@@ -261,15 +265,15 @@ Pastas e componentes são criados conforme necessidades reais. A configuração
 compartilhada ativa TypeScript estrito; o backend usa módulos ESM com resolução
 NodeNext, e o frontend usa a resolução do bundler Vite. Dependências de autenticação
 e formulários foram adicionadas na Etapa 3. TanStack Query gerencia o estado remoto
-de clientes. Gráficos e Kanban continuam fora do escopo.
+de clientes e projetos. Gráficos e Kanban continuam fora do escopo.
 
 ## Base visual
 
-As rotas abaixo usam o mesmo layout. `/clientes` e `/clientes/:clientId` são
-funcionais; as demais áreas ainda exibem conteúdo temporário:
+As rotas abaixo usam o mesmo layout. `/clientes`, `/clientes/:clientId`, `/projetos`
+e `/projetos/:projectId` são funcionais; as áreas abaixo ainda exibem conteúdo
+temporário:
 
 - `/dashboard`
-- `/projetos`
 - `/tarefas`
 - `/financeiro`
 - `/horas`
@@ -293,15 +297,15 @@ reduzido.
 
 ## Clientes e testes da Etapa 4
 
-| Endpoint                                  | Comportamento                                 |
-| ----------------------------------------- | --------------------------------------------- |
-| `GET /api/v1/clients`                     | Lista ativos; aceita `status` e busca com `q` |
-| `POST /api/v1/clients`                    | Cadastra para o usuário autenticado           |
-| `GET /api/v1/clients/:clientId`           | Retorna detalhe pertencente ao usuário        |
-| `PATCH /api/v1/clients/:clientId`         | Atualiza os dados editáveis                   |
-| `PATCH /api/v1/clients/:clientId/archive` | Define `archivedAt`                           |
-| `PATCH /api/v1/clients/:clientId/restore` | Limpa `archivedAt`                            |
-| `DELETE /api/v1/clients/:clientId`        | Exclui permanentemente                        |
+| Endpoint                                  | Comportamento                                   |
+| ----------------------------------------- | ----------------------------------------------- |
+| `GET /api/v1/clients`                     | Lista ativos; aceita `status` e busca com `q`   |
+| `POST /api/v1/clients`                    | Cadastra para o usuário autenticado             |
+| `GET /api/v1/clients/:clientId`           | Retorna detalhe pertencente ao usuário          |
+| `PATCH /api/v1/clients/:clientId`         | Atualiza os dados editáveis                     |
+| `PATCH /api/v1/clients/:clientId/archive` | Define `archivedAt`                             |
+| `PATCH /api/v1/clients/:clientId/restore` | Limpa `archivedAt`                              |
+| `DELETE /api/v1/clients/:clientId`        | Exclui sem projetos; caso contrário retorna 409 |
 
 Todas as operações exigem sessão e combinam `clientId` com o `userId` autenticado.
 A API rejeita ownership enviado pelo frontend e responde `404` para acesso cruzado.
@@ -319,6 +323,39 @@ npm run test:clients
 A suíte cria dois usuários e comprova isolamento em listagem, busca, detalhe,
 edição, arquivamento, restauração e exclusão. Os registros temporários são removidos
 ao final. `npm run test:auth:browser` também percorre o CRUD completo no Chrome.
+
+## Projetos e testes da Etapa 5
+
+| Endpoint                                    | Comportamento                          |
+| ------------------------------------------- | -------------------------------------- |
+| `GET /api/v1/projects`                      | Lista ativos; aceita busca e filtros   |
+| `POST /api/v1/projects`                     | Cadastra com cliente ativo do usuário  |
+| `GET /api/v1/projects/:projectId`           | Retorna detalhe pertencente ao usuário |
+| `PATCH /api/v1/projects/:projectId`         | Atualiza dados, status e progresso     |
+| `PATCH /api/v1/projects/:projectId/archive` | Define `archivedAt`                    |
+| `PATCH /api/v1/projects/:projectId/restore` | Limpa `archivedAt`                     |
+| `DELETE /api/v1/projects/:projectId`        | Exclui permanentemente                 |
+
+`GET /projects` usa `view=active|archived`, `status`, `clientId` e `q`. A busca
+case-insensitive cobre projeto e nome do cliente. Todas as consultas combinam o
+recurso com o usuário autenticado; cliente estrangeiro ou indisponível não pode ser
+associado.
+
+`budget` é persistido como `Decimal(12,2)` e trafega na API como string decimal.
+`startDate` e `dueDate` usam o tipo PostgreSQL `DATE` e o contrato `YYYY-MM-DD`, sem
+conversão para o fuso local. O progresso manual aceita inteiros de 0 a 100.
+
+Clientes arquivados permanecem visíveis em projetos existentes. Eles não aparecem
+na criação e não aceitam novas associações. Um cliente com qualquer projeto não
+pode ser excluído permanentemente e recebe `409 Conflict`.
+
+```sh
+npm run test:projects
+```
+
+A suíte usa dois usuários, dois clientes e dois projetos para comprovar isolamento
+em criação, associação, listagem, busca, filtros, detalhe, edição, archive, restore
+e delete. O teste de navegador percorre o fluxo integrado de Clientes e Projetos.
 
 ## Autenticação e testes da Etapa 3
 

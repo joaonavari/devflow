@@ -116,9 +116,9 @@ Arquivar define `archivedAt`, preserva os dados e remove o cliente da listagem
 padrão. Restaurar limpa `archivedAt`. Ambas as operações são idempotentes para o
 proprietário e não consultam nem alteram registros de outro usuário.
 
-`DELETE` executa exclusão permanente condicionada por `id + userId`. Projetos ainda
-não existem, então nenhuma relação ou regra falsa foi antecipada. O service mantém
-um ponto explícito para a futura verificação de associações.
+`DELETE` executa exclusão permanente condicionada por `id + userId`. A Etapa 5
+passou a bloquear a exclusão com `409 Conflict` quando o cliente possui projetos.
+O arquivamento continua permitido.
 
 ## Frontend e UI
 
@@ -188,8 +188,6 @@ Escape, console sem exceções e ausência de requests em loop.
 - O MVP não tem paginação; o envelope permite adicioná-la depois.
 - A busca `contains` atende ao volume inicial. Índice textual pode ser avaliado com
   dados e métricas reais.
-- A exclusão não verifica Projetos porque esse domínio não existe. A regra entra
-  quando a relação real for criada.
 - O teste visual foi feito em Chrome headless; Safari, Firefox e leitores de tela
   não foram testados.
 - O aviso existente do bundle acima de 500 kB permanece; divisão de código pode ser

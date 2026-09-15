@@ -6,6 +6,7 @@
   "scripts": {
     "test:auth": "npm run db:generate && node --import tsx --test src/tests/auth.test.ts",
     "test:clients": "npm run db:generate && node --import tsx --test src/tests/client.test.ts",
+    "test:projects": "npm run db:generate && node --import tsx --test src/tests/project.test.ts",
     "dev": "tsx watch src/server.ts",
     "predev": "npm run db:generate",
     "build": "npm run db:generate && tsc --project tsconfig.build.json",

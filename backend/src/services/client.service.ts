@@ -5,7 +5,7 @@ import type {
   ListClientsQuery,
   UpdateClientInput,
 } from '../validators/client.schemas.js';
-import { clientNotFound } from './client-error.js';
+import { clientHasProjects, clientNotFound } from './client-error.js';
 
 export const publicClientSelect = {
   id: true,
@@ -103,7 +103,21 @@ export async function restoreClient(userId: string, clientId: string) {
 }
 
 export async function deleteClient(userId: string, clientId: string) {
-  // Future project constraints can be checked here before this scoped delete.
-  const deleted = await database.client.deleteMany({ where: { id: clientId, userId } });
-  if (deleted.count !== 1) throw clientNotFound();
+  const client = await database.client.findFirst({
+    where: { id: clientId, userId },
+    select: { id: true },
+  });
+  if (!client) throw clientNotFound();
+  if ((await database.project.count({ where: { clientId, userId } })) > 0) {
+    throw clientHasProjects();
+  }
+  try {
+    const deleted = await database.client.deleteMany({ where: { id: clientId, userId } });
+    if (deleted.count !== 1) throw clientNotFound();
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      throw clientHasProjects();
+    }
+    throw error;
+  }
 }

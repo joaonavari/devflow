@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { AuthError } from '../services/auth-error.js';
 import { ClientError } from '../services/client-error.js';
+import { ProjectError } from '../services/project-error.js';
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
   if (response.headersSent) {
@@ -10,7 +11,7 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   }
 
   response.setHeader('Cache-Control', 'no-store');
-  if (error instanceof AuthError || error instanceof ClientError) {
+  if (error instanceof AuthError || error instanceof ClientError || error instanceof ProjectError) {
     response.status(error.status).json({ error: { code: error.code, message: error.message } });
     return;
   }

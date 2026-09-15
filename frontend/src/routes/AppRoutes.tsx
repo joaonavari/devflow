@@ -8,6 +8,8 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { ClientsPage } from '../pages/ClientsPage';
 import { ClientDetailPage } from '../pages/ClientDetailPage';
+import { ProjectDetailPage } from '../pages/ProjectDetailPage';
+import { ProjectsPage } from '../pages/ProjectsPage';
 
 export function AppRoutes() {
   return (
@@ -21,8 +23,10 @@ export function AppRoutes() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/clientes" element={<ClientsPage />} />
           <Route path="/clientes/:clientId" element={<ClientDetailPage />} />
+          <Route path="/projetos" element={<ProjectsPage />} />
+          <Route path="/projetos/:projectId" element={<ProjectDetailPage />} />
           {navigationItems
-            .filter((item) => item.path !== '/clientes')
+            .filter((item) => !['/clientes', '/projetos'].includes(item.path))
             .map((item) => (
               <Route
                 key={item.path}
