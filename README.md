@@ -3,16 +3,18 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 1 — Fundação
+## Estado atual: Etapa 2 — Base Visual
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
-- React, TypeScript e Vite, com Tailwind CSS e uma página mínima de desenvolvimento.
+- React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
 - Prisma configurado, ainda sem entidades de negócio ou migrations.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
+- Rotas visuais para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-Autenticação, telas de produto, biblioteca de UI, E2E e CI/CD não fazem parte desta
-entrega. A modelagem de negócio será adicionada nas respectivas etapas.
+Autenticação, dados reais, CRUD, Kanban, gráficos, portal do cliente, E2E e CI/CD
+não fazem parte desta entrega. A modelagem de negócio será adicionada nas
+respectivas etapas.
 
 ## Pré-requisitos
 
@@ -198,7 +200,16 @@ na mesma origem.
 ```text
 DevFlow/
 ├── frontend/
-│   ├── src/              # Página mínima, entrada React e CSS
+│   ├── public/           # Favicon local
+│   ├── src/
+│   │   ├── components/   # Navegação e componentes usados pela base visual
+│   │   ├── layouts/      # Estrutura autenticada responsiva
+│   │   ├── pages/        # Placeholders e página não encontrada
+│   │   ├── routes/       # Definição das rotas e metadados da navegação
+│   │   ├── styles/       # Tokens centralizados do design system
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── styles.css
 │   ├── index.html
 │   ├── vite.config.ts    # React, Tailwind e proxy local
 │   └── tsconfig.json
@@ -224,10 +235,36 @@ DevFlow/
 └── package-lock.json
 ```
 
-Pastas e componentes serão criados conforme necessidades reais. A configuração
+Pastas e componentes são criados conforme necessidades reais. A configuração
 compartilhada ativa TypeScript estrito; o backend usa módulos ESM com resolução
 NodeNext, e o frontend usa a resolução do bundler Vite. Não há dependências de
 autenticação, formulários, gráficos ou Kanban instaladas antecipadamente.
+
+## Base visual
+
+As rotas abaixo usam o mesmo layout e exibem conteúdo temporário:
+
+- `/dashboard`
+- `/projetos`
+- `/clientes`
+- `/tarefas`
+- `/financeiro`
+- `/horas`
+- `/configuracoes`
+
+A raiz redireciona para `/dashboard`. Endereços desconhecidos exibem uma página
+de erro dentro do layout, com retorno para o dashboard.
+
+Os tokens visuais ficam em `frontend/src/styles/tokens.css`: paleta, tipografia,
+escala de espaçamento, raios, sombra, breakpoint, tamanho mínimo dos controles e
+foco. A fonte variável Inter é servida pelo próprio frontend. O azul `#3B82F6`
+identifica seleção, links e foco; ele não é usado como decoração de superfície.
+
+Em telas a partir de 1024 px, a sidebar permanece visível. Abaixo desse tamanho,
+um botão de 44 px abre a navegação em um diálogo modal nativo, que gerencia foco,
+teclado e fechamento com Escape. O conteúdo usa gutters fluidos e não depende de
+larguras fixas. As transições são desativadas quando o sistema solicita movimento
+reduzido.
 
 ## Validação da Etapa 1
 

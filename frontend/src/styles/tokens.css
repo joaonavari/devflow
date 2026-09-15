@@ -1,0 +1,54 @@
+@theme {
+  --font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+
+  --color-background: #090b0f;
+  --color-surface: #11141a;
+  --color-border: #232730;
+  --color-text: #f5f7fa;
+  --color-secondary: #9ca3af;
+  --color-accent: #3b82f6;
+  --color-sidebar: #0d1015;
+  --color-hover: #191d25;
+  --color-overlay: rgb(0 0 0 / 65%);
+
+  --spacing: 0.25rem;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 1.875rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-brand: 650;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --tracking-tight: -0.035em;
+  --shadow-subtle: 0 1px 2px rgb(0 0 0 / 12%);
+  --breakpoint-lg: 64rem;
+}
+
+:root {
+  --sidebar-width: 15rem;
+  --topbar-height: 4rem;
+  --content-width: 86rem;
+  --page-gutter: clamp(1.25rem, 2.5vw, 2.5rem);
+  --target-size: 2.75rem;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+  --focus-color: var(--color-accent);
+  --motion-fast: 120ms;
+}
