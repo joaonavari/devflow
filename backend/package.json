@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:auth": "npm run db:generate && node --import tsx --test src/tests/auth.test.ts",
     "dev": "tsx watch src/server.ts",
     "predev": "npm run db:generate",
     "build": "npm run db:generate && tsc --project tsconfig.build.json",
@@ -18,10 +19,16 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "bcrypt": "6.0.0",
+    "cookie-parser": "1.4.7",
     "express": "5.2.1",
+    "express-rate-limit": "8.7.0",
+    "jose": "6.2.12",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/bcrypt": "6.0.0",
+    "@types/cookie-parser": "1.4.10",
     "@types/express": "^5.0.5",
     "tsx": "^4.20.6"
   }

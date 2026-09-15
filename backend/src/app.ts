@@ -1,10 +1,17 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
+import { authRouter } from './routes/auth.routes.js';
+import { originGuard } from './middlewares/origin-guard.js';
 import { errorHandler } from './middlewares/error-handler.js';
 import { healthRouter } from './routes/health.routes.js';
 
 export const app = express();
 
 app.disable('x-powered-by');
+app.use('/api', originGuard);
+app.use(express.json({ limit: '16kb' }));
+app.use(cookieParser());
+app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/health', healthRouter);
 
 app.use((_request, response) => {

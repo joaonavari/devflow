@@ -1,4 +1,6 @@
-import { ChevronRight, Menu } from 'lucide-react';
+import { ChevronRight, LogOut, Menu } from 'lucide-react';
+import { useState } from 'react';
+import { useAuth } from '../../auth/auth-context';
 import { Badge } from '../ui/Badge';
 import { IconButton } from '../ui/IconButton';
 
@@ -9,6 +11,20 @@ interface TopbarProps {
 }
 
 export function Topbar({ pageTitle, menuOpen, onOpenMenu }: TopbarProps) {
+  const { signOut } = useAuth();
+  const [leaving, setLeaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function logout() {
+    setLeaving(true);
+    setError(null);
+    try {
+      await signOut();
+    } catch {
+      setError('Não foi possível sair. Tente novamente.');
+    } finally {
+      setLeaving(false);
+    }
+  }
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -33,8 +49,24 @@ export function Topbar({ pageTitle, menuOpen, onOpenMenu }: TopbarProps) {
             </ol>
           </nav>
         </div>
-        <Badge>Prévia</Badge>
+        <div className="topbar-actions">
+          <Badge>Prévia</Badge>
+          <IconButton
+            label={leaving ? 'Saindo…' : 'Sair da conta'}
+            disabled={leaving}
+            onClick={() => {
+              void logout();
+            }}
+          >
+            <LogOut size={18} strokeWidth={1.7} aria-hidden="true" />
+          </IconButton>
+        </div>
       </div>
+      {error && (
+        <p className="logout-error" role="alert">
+          {error}
+        </p>
+      )}
     </header>
   );
 }

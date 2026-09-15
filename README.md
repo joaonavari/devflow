@@ -3,18 +3,20 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 2 — Base Visual
+## Estado atual: Etapa 3 — Autenticação
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
-- Prisma configurado, ainda sem entidades de negócio ou migrations.
+- Prisma com `User`, `AuthSession` e migration aplicada ao PostgreSQL.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
-- Rotas visuais para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
+- Cadastro, login, logout, restauração e rotação de sessão integrados à API real.
+- Rotas visuais privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-Autenticação, dados reais, CRUD, Kanban, gráficos, portal do cliente, E2E e CI/CD
-não fazem parte desta entrega. A modelagem de negócio será adicionada nas
-respectivas etapas.
+CRUD de negócio, Kanban, gráficos, portal do cliente e CI/CD não fazem parte desta
+entrega. As páginas internas continuam sendo os placeholders aprovados da Etapa 2.
+Consulte o [relatório da Etapa 3](docs/etapa-3-autenticacao.md) para decisões,
+arquivos, revisão de segurança e resultados de validação.
 
 ## Pré-requisitos
 
@@ -48,6 +50,16 @@ Edite `.env` e substitua a senha de exemplo em **`POSTGRES_PASSWORD` e
 precisariam ser codificados na URL. Os exemplos são placeholders, não credenciais
 de produção. O arquivo `.env` é ignorado pelo Git.
 
+Gere uma chave de 32 bytes e copie a saída para `JWT_SECRET` no `.env`:
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+`JWT_SECRET` exige exatamente 64 caracteres hexadecimais. Use uma chave aleatória
+própria por ambiente. `APP_ORIGIN=http://127.0.0.1:5173` corresponde ao frontend local;
+use esse endereço no navegador, sem alternar para `localhost`.
+
 O arquivo de lock da raiz é compartilhado pelos workspaces. Não execute uma
 instalação independente para cada aplicativo. `npm install` fica reservado a
 alterações intencionais nas dependências; após clonar, prefira `npm ci`.
@@ -67,6 +79,7 @@ Quando Docker e Compose estiverem instalados e em execução:
 ```sh
 npm run db:up
 npm run db:status
+npm run db:migrate:deploy
 npm run db:check
 ```
 
@@ -105,8 +118,9 @@ O comando inicia os dois workspaces e encerra ambos quando um deles é encerrado
 Também é possível executar `npm run dev:frontend` e `npm run dev:backend`
 separadamente. Use `Ctrl+C` para parar.
 
-O Vite encaminha `/api` para a API local. Assim, o frontend usa URLs relativas,
-sem precisar de CORS na fundação. `API_PORT` é lido pelo proxy; reinicie os processos
+O Vite encaminha `/api` para a API local. O frontend usa URLs relativas e cookies
+HttpOnly. A API permite credenciais somente para `APP_ORIGIN`; requisições de
+escrita exigem essa origem e `X-DevFlow-Request: 1`. `API_PORT` é lido pelo proxy; reinicie os processos
 após alterar o `.env`. Apenas variáveis prefixadas com `VITE_` são expostas ao
 código do navegador: nunca use esse prefixo para senhas ou `DATABASE_URL`.
 
@@ -127,19 +141,20 @@ inexistentes retornam JSON; detalhes internos e credenciais não são enviados a
 cliente. O pool tem limites de conexão e de espera. A API fecha o servidor HTTP
 e as conexões do Prisma ao receber `SIGINT` ou `SIGTERM`.
 
-## Prisma e futuras migrations
+## Prisma e migrations
 
 ```sh
 npm run db:validate
 npm run db:generate
 ```
 
-O schema inicial define somente o provider PostgreSQL e o gerador do client. O
-Prisma está fixado na versão estável 7.10.0, com o adaptador PostgreSQL da mesma
+O schema define o provider PostgreSQL, `User` e `AuthSession`. A migration
+`20260915024133_stage3_authentication` cria as tabelas, índices e relação. O
+Prisma está fixado na versão 7.10.0, com o adaptador PostgreSQL da mesma
 versão. O client gerado fica em `backend/src/generated/prisma/`, ignorado pelo Git,
 e é incluído na compilação do backend.
 
-Depois de adicionar modelos, em uma etapa futura e com o banco disponível:
+Para criar uma nova migration após uma alteração de schema autorizada:
 
 ```sh
 npm run db:migrate -- --name nome_da_alteracao
@@ -156,8 +171,8 @@ Para aplicar migrations já versionadas em um ambiente de publicação futuro:
 npm run db:migrate:deploy
 ```
 
-Nenhuma migration é necessária nesta etapa. Não há `db push`, seed ou criação
-antecipada de tabelas. Os scripts apenas preparam o fluxo para as próximas etapas.
+Esta etapa utiliza uma migration real. Não usa `db push`, seed nem tabelas
+antecipadas de funcionalidades de negócio.
 
 ## Verificações e build
 
@@ -204,7 +219,8 @@ DevFlow/
 │   ├── src/
 │   │   ├── components/   # Navegação e componentes usados pela base visual
 │   │   ├── layouts/      # Estrutura autenticada responsiva
-│   │   ├── pages/        # Placeholders e página não encontrada
+│   │   ├── auth/         # Estado de sessão, cliente HTTP e proteção de rotas
+│   │   ├── pages/        # Login, cadastro, placeholders e página não encontrada
 │   │   ├── routes/       # Definição das rotas e metadados da navegação
 │   │   ├── styles/       # Tokens centralizados do design system
 │   │   ├── App.tsx
@@ -214,14 +230,16 @@ DevFlow/
 │   ├── vite.config.ts    # React, Tailwind e proxy local
 │   └── tsconfig.json
 ├── backend/
-│   ├── prisma/           # Schema; migrations somente em etapas futuras
+│   ├── prisma/           # Schema e migration de autenticação
 │   ├── src/
 │   │   ├── config/       # Ambiente e client Prisma
-│   │   ├── controllers/  # Respostas HTTP do health check
-│   │   ├── middlewares/  # Tratamento centralizado de erros
-│   │   ├── routes/       # Rotas do health check
+│   │   ├── controllers/  # Respostas HTTP, autenticação e cookies
+│   │   ├── middlewares/  # Autenticação, origem/CSRF e erros
+│   │   ├── routes/       # Health check e autenticação
 │   │   ├── scripts/      # Diagnóstico de conexão
-│   │   ├── services/     # Consulta de diagnóstico
+│   │   ├── services/     # Diagnóstico, credenciais e sessões
+│   │   ├── tests/        # Testes HTTP com PostgreSQL real
+│   │   ├── validators/   # Schemas de entrada Zod
 │   │   ├── app.ts        # Composição do Express
 │   │   └── server.ts     # Porta HTTP e encerramento
 │   ├── prisma.config.ts
@@ -237,8 +255,8 @@ DevFlow/
 
 Pastas e componentes são criados conforme necessidades reais. A configuração
 compartilhada ativa TypeScript estrito; o backend usa módulos ESM com resolução
-NodeNext, e o frontend usa a resolução do bundler Vite. Não há dependências de
-autenticação, formulários, gráficos ou Kanban instaladas antecipadamente.
+NodeNext, e o frontend usa a resolução do bundler Vite. Dependências de autenticação
+e formulários foram adicionadas na Etapa 3; gráficos e Kanban continuam fora do escopo.
 
 ## Base visual
 
@@ -252,8 +270,10 @@ As rotas abaixo usam o mesmo layout e exibem conteúdo temporário:
 - `/horas`
 - `/configuracoes`
 
-A raiz redireciona para `/dashboard`. Endereços desconhecidos exibem uma página
-de erro dentro do layout, com retorno para o dashboard.
+A raiz redireciona para `/dashboard`. Visitantes são encaminhados para `/login`;
+o login retorna à rota privada solicitada. `/login` e `/register` redirecionam
+usuários autenticados para `/dashboard`. Endereços desconhecidos exibem uma página
+de erro dentro do layout privado, com retorno para o dashboard.
 
 Os tokens visuais ficam em `frontend/src/styles/tokens.css`: paleta, tipografia,
 escala de espaçamento, raios, sombra, breakpoint, tamanho mínimo dos controles e
@@ -266,7 +286,64 @@ teclado e fechamento com Escape. O conteúdo usa gutters fluidos e não depende 
 larguras fixas. As transições são desativadas quando o sistema solicita movimento
 reduzido.
 
-## Validação da Etapa 1
+## Autenticação e testes da Etapa 3
+
+| Endpoint                     | Resultado                                               |
+| ---------------------------- | ------------------------------------------------------- |
+| `POST /api/v1/auth/register` | Cria usuário e sessão; retorna `201` e dados públicos   |
+| `POST /api/v1/auth/login`    | Valida credenciais; retorna `200` e cria sessão         |
+| `POST /api/v1/auth/refresh`  | Consome refresh atual, grava novo hash e renova cookies |
+| `POST /api/v1/auth/logout`   | Revoga a sessão atual e remove cookies; `204`           |
+| `GET /api/v1/auth/me`        | Retorna usuário autenticado ou `401`                    |
+
+O JWT HS256 dura 15 minutos. A sessão tem duração absoluta de 7 dias, inclusive
+após renovações. Senhas usam bcrypt com custo 12; o refresh usa 32 bytes aleatórios
+e somente seu SHA-256 é persistido. Tokens ficam exclusivamente em cookies
+HttpOnly, SameSite=Lax, Secure em produção. Nenhum token vai para Web Storage.
+O middleware verifica assinatura, claims e a sessão no banco em cada acesso.
+
+O frontend consulta `/auth/me` ao abrir a aplicação, ao receber foco e a cada
+minuto enquanto visível. Um `401` tenta renovar uma única vez. Web Locks
+serializa operações entre abas e uma Promise compartilha renovações simultâneas
+na mesma aba. BroadcastChannel comunica login/logout sem transmitir tokens.
+
+Com o PostgreSQL disponível e a migration aplicada:
+
+```sh
+npm run test:auth
+```
+
+A suíte usa HTTP real e Prisma, cria um usuário temporário com email exclusivo
+e o remove junto com suas sessões ao terminar. Não substitui o banco por mocks.
+O teste não é incluído no build da API.
+
+Para a verificação de navegador, deixe `npm run dev` e um Chrome com a porta CDP
+`9222` ativos. Exemplo no macOS, com perfil separado:
+
+```sh
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 \
+  --user-data-dir=/private/tmp/devflow-auth-chrome about:blank
+```
+
+Em outro terminal:
+
+```sh
+npm run test:auth:browser
+```
+
+O script abre um contexto isolado, valida formulários, sete rotas privadas,
+reload, rotação, concorrência em duas abas, logout, teclado e responsividade.
+As capturas ficam em `/private/tmp/devflow-stage3` (ajustável com
+`AUTH_SCREENSHOT_DIR`). O usuário e contexto de teste são removidos ao terminar.
+Não execute testes contra banco de produção.
+
+Publicação exige HTTPS, `NODE_ENV=production`, uma chave `JWT_SECRET` própria,
+`APP_ORIGIN` exata e encaminhamento de `/api` na mesma origem do frontend.
+O limitador de tentativas é em memória por processo; qualquer futura configuração
+de proxy deve definir a confiança no proxy de forma restrita, conforme a topologia.
+
+## Histórico: validação da Etapa 1
 
 Verificações realizadas com Node.js 24.13.0 e npm 11.6.2:
 
@@ -283,7 +360,7 @@ Verificações realizadas com Node.js 24.13.0 e npm 11.6.2:
 | Compose                              | Sintaxe YAML e estrutura básica verificadas estaticamente                                                  |
 | Git                                  | `.env`, dependências, builds e client gerado ignorados; credencial local ausente dos arquivos versionáveis |
 
-Docker e PostgreSQL não estavam instalados no ambiente. Portanto, não foi
+Na validação original da Etapa 1, Docker e PostgreSQL não estavam instalados no ambiente. Portanto, não foi
 executado `docker compose config`, não foi iniciado um container e não foi
 confirmada uma conexão bem-sucedida com o banco. Os comandos de migration foram
 verificados com `--help`, sem aplicar alterações. Para concluir a verificação

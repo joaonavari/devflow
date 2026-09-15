@@ -1,7 +1,8 @@
-import { ArrowUpRight, Layers2 } from 'lucide-react';
+import { Layers2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { navigationItems } from '../../routes/navigation';
+import { useAuth } from '../../auth/auth-context';
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -9,6 +10,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNavigate, closeButton }: SidebarProps) {
+  const { user } = useAuth();
   return (
     <div className="sidebar-content">
       <div className="sidebar-brand-row">
@@ -36,13 +38,12 @@ export function Sidebar({ onNavigate, closeButton }: SidebarProps) {
 
       <div className="sidebar-footer">
         <span className="workspace-symbol" aria-hidden="true">
-          W
+          {user?.name.slice(0, 1).toLocaleUpperCase()}
         </span>
-        <div>
-          <p>Workspace pessoal</p>
-          <span>Seu espaço de trabalho</span>
+        <div className="sidebar-user">
+          <p title={user?.name}>{user?.name}</p>
+          <span title={user?.email}>{user?.email}</span>
         </div>
-        <ArrowUpRight className="workspace-arrow" size={15} aria-hidden="true" />
       </div>
     </div>
   );
