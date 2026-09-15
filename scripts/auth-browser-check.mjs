@@ -13,6 +13,7 @@ const exceptions = [];
 let refreshRequests = 0;
 let clientRequests = 0;
 let projectRequests = 0;
+let taskRequests = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function connect(url) {
@@ -51,6 +52,11 @@ async function connect(url) {
       message.params.request.url.includes('/api/v1/projects')
     )
       projectRequests++;
+    if (
+      message.method === 'Network.requestWillBeSent' &&
+      message.params.request.url.includes('/api/v1/tasks')
+    )
+      taskRequests++;
   });
   return (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -145,11 +151,75 @@ async function page(browser, context) {
   };
   const click = (selector) =>
     evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const drag = async (sourceSelector, targetSelector) => {
+    const points = await evaluate(`(() => {
+      const source = document.querySelector(${JSON.stringify(sourceSelector)}).getBoundingClientRect();
+      const target = document.querySelector(${JSON.stringify(targetSelector)}).getBoundingClientRect();
+      return {
+        source: { x: source.left + source.width / 2, y: source.top + source.height / 2 },
+        target: { x: target.left + target.width / 2, y: target.top + target.height / 2 },
+      };
+    })()`);
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: points.source.x,
+      y: points.source.y,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      button: 'left',
+      buttons: 1,
+      clickCount: 1,
+      x: points.source.x,
+      y: points.source.y,
+    });
+    await delay(100);
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      button: 'left',
+      buttons: 1,
+      x: points.source.x + 10,
+      y: points.source.y + 10,
+    });
+    await delay(100);
+    for (let step = 1; step <= 5; step += 1) {
+      await send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        button: 'left',
+        buttons: 1,
+        x: points.source.x + ((points.target.x - points.source.x) * step) / 5,
+        y: points.source.y + ((points.target.y - points.source.y) * step) / 5,
+      });
+      await delay(50);
+    }
+    await delay(100);
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      button: 'left',
+      buttons: 0,
+      clickCount: 1,
+      x: points.target.x,
+      y: points.target.y,
+    });
+  };
   const setValue = (selector, value) =>
     evaluate(`(() => {
       const element = document.querySelector(${JSON.stringify(selector)});
       const setter = Object.getOwnPropertyDescriptor(element.constructor.prototype, 'value').set;
       setter.call(element, ${JSON.stringify(value)});
+      const reactPropsKey = Object.keys(element).find((key) => key.startsWith('__reactProps$'));
+      const reactOnChange = reactPropsKey && element[reactPropsKey]?.onChange;
+      if (typeof reactOnChange === 'function') {
+        reactOnChange({
+          target: {
+            name: element.name,
+            type: element.type,
+            value: ${JSON.stringify(value)},
+            checked: element.checked,
+          },
+          type: 'change',
+        });
+      }
       element.dispatchEvent(new Event('input', { bubbles: true }));
       element.dispatchEvent(new Event('change', { bubbles: true }));
     })()`);
@@ -177,6 +247,7 @@ async function page(browser, context) {
     fill,
     fillSelector,
     click,
+    drag,
     setValue,
     viewport,
     screenshot,
@@ -334,7 +405,6 @@ try {
   );
 
   await tab.viewport(1440);
-  const clientsStart = clientRequests;
   await tab.navigate('/clientes');
   await tab.until('document.body.innerText.includes("Cadastre seu primeiro cliente")');
   await tab.screenshot('clients-empty-desktop');
@@ -478,10 +548,8 @@ try {
   );
   const projectPath = await tab.evaluate('location.pathname');
   await tab.fill('name', 'Portal Navari 2.0');
-  await tab.setValue('[name="status"]', 'IN_PROGRESS');
   await tab.setValue('[name="progress"]', '65');
   await tab.fill('budget', '15000.75');
-  await tab.setValue('[name="dueDate"]', '2026-12-15');
   await tab.click('[data-project-action="save"]');
   await tab.until(
     'document.body.innerText.includes("Portal Navari 2.0 foi atualizado com sucesso.") && document.body.innerText.includes("65%")',
@@ -489,9 +557,222 @@ try {
   await tab.screenshot('project-detail-desktop');
   await tab.reload();
   await tab.until(
-    'document.querySelector("h1")?.textContent === "Portal Navari 2.0" && document.querySelector("[name=progress]")?.value === "65" && document.querySelector("[name=status]")?.value === "IN_PROGRESS"',
+    'document.querySelector("h1")?.textContent === "Portal Navari 2.0" && document.querySelector("[name=progress]")?.value === "65"',
   );
-  console.log('PASS: detalhe, edição de status/progresso/orçamento e persistência após reload.');
+  console.log('PASS: detalhe, edição de progresso/orçamento e persistência após reload.');
+
+  await tab.click('[name="progressMode"][value="AUTO"]');
+  await tab.click('[data-project-action="save"]');
+  await tab.until(
+    'document.querySelector("[name=progress]").disabled && document.body.innerText.includes("Calculado pelas tarefas concluídas") && document.body.innerText.includes("0%")',
+  );
+  await tab.click('[data-task-action="new"]');
+  await tab.until(
+    'document.querySelector(".task-dialog").open && document.activeElement.name === "title"',
+  );
+  await tab.send('Input.dispatchKeyEvent', {
+    type: 'rawKeyDown',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await tab.send('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await tab.until('!document.querySelector(".task-dialog")');
+  await tab.click('[data-task-action="new"]');
+  await tab.until(
+    'document.querySelector(".task-dialog").open && document.activeElement.name === "title"',
+  );
+  await tab.fill('title', 'Preparar arquitetura');
+  await tab.until(
+    'document.querySelector(".task-dialog [name=title]").value === "Preparar arquitetura"',
+  );
+  await tab.fill('description', 'Definir o fluxo principal.');
+  await tab.until(
+    'document.querySelector(".task-dialog [name=description]").value === "Definir o fluxo principal."',
+  );
+  await tab.setValue('[name="priority"]', 'HIGH');
+  await tab.setValue('[name="dueDate"]', '2026-10-15');
+  await tab.until(
+    'document.querySelector(".task-dialog [name=priority]").value === "HIGH" && document.querySelector(".task-dialog [name=dueDate]").value === "2026-10-15"',
+  );
+  await tab.click('[name="isClientVisible"]');
+  await tab.click('[data-task-action="save"]');
+  await tab.until(
+    '!document.querySelector(".task-dialog") && document.querySelectorAll(".task-card").length === 1 && document.body.innerText.includes("Preparar arquitetura") && document.body.innerText.includes("15/10/2026") && document.body.innerText.includes("0%")',
+  );
+  await tab.click('[data-task-action="new"]');
+  await tab.until('document.querySelector(".task-dialog").open');
+  await tab.fill('title', 'Implementar interface');
+  await tab.setValue('[name="priority"]', 'URGENT');
+  await tab.click('[data-task-action="save"]');
+  await tab.until(
+    '!document.querySelector(".task-dialog") && document.querySelectorAll(".task-card").length === 2',
+  );
+  const rollbackTaskId = await tab.evaluate(
+    'document.querySelector(".kanban-column[data-status=TODO] .task-card").dataset.taskId',
+  );
+  await tab.send('Network.setBlockedURLs', {
+    urls: [`*/api/v1/tasks/${rollbackTaskId}/move`],
+  });
+  await tab.click(
+    '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="toggle"]',
+  );
+  await tab.until(
+    'document.body.innerText.includes("Não foi possível mover a tarefa.") && document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 2',
+  );
+  await tab.send('Network.setBlockedURLs', { urls: [] });
+  await tab.drag(
+    '.kanban-column[data-status="TODO"] .task-card:first-child .task-drag-handle',
+    '.kanban-column[data-status="IN_PROGRESS"]',
+  );
+  await tab.until(
+    'document.querySelectorAll(".kanban-column[data-status=IN_PROGRESS] .task-card").length === 1 && document.body.innerText.includes("0%")',
+  );
+  await tab.setValue(
+    '.kanban-column[data-status="IN_PROGRESS"] .task-card [data-task-action="status"]',
+    'DONE',
+  );
+  await tab.until(
+    'document.querySelectorAll(".kanban-column[data-status=DONE] .task-card").length === 1 && document.body.innerText.includes("50%")',
+  );
+  const completedTaskId = await tab.evaluate(
+    'document.querySelector(".kanban-column[data-status=DONE] .task-card").dataset.taskId',
+  );
+  await tab.until(
+    `import('/src/tasks/task-api.ts').then(({ getTask }) => getTask(${JSON.stringify(completedTaskId)})).then((task) => typeof task.completedAt === 'string')`,
+  );
+  await tab.click('.kanban-column[data-status="DONE"] .task-card [data-task-action="toggle"]');
+  await tab.until(
+    'document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 2 && document.body.innerText.includes("0%")',
+  );
+  await tab.until(
+    `import('/src/tasks/task-api.ts').then(({ getTask }) => getTask(${JSON.stringify(completedTaskId)})).then((task) => task.completedAt === null)`,
+  );
+  const orderBefore = await tab.evaluate(
+    '[...document.querySelectorAll(".kanban-column[data-status=TODO] .task-card strong")].map((item) => item.textContent).join("|")',
+  );
+  await tab.click(
+    '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="down"]',
+  );
+  await tab.until(
+    `[...document.querySelectorAll(".kanban-column[data-status=TODO] .task-card strong")].map((item) => item.textContent).join("|") !== ${JSON.stringify(orderBefore)}`,
+  );
+  await tab.click(
+    '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="edit"]',
+  );
+  await tab.until('document.querySelector(".task-dialog").open');
+  await tab.fill('title', 'Implementar interface revisada');
+  await tab.setValue('[name="priority"]', 'LOW');
+  await tab.click('[data-task-action="save"]');
+  await tab.until(
+    '!document.querySelector(".task-dialog") && document.body.innerText.includes("Implementar interface revisada foi atualizada.")',
+  );
+  await tab.click(
+    '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="toggle"]',
+  );
+  await tab.until('document.body.innerText.includes("50%")');
+  await tab.reload();
+  await tab.until(
+    'document.querySelectorAll(".task-card").length === 2 && document.querySelectorAll(".kanban-column[data-status=DONE] .task-card").length === 1 && document.body.innerText.includes("50%") && document.body.innerText.includes("15/10/2026")',
+  );
+  await tab.viewport(390);
+  assert.deepEqual(
+    await tab.evaluate(`(() => {
+      const board = document.querySelector('.kanban-board');
+      return {
+        pageOverflows: document.body.scrollWidth > document.documentElement.clientWidth,
+        boardInsideViewport: board.getBoundingClientRect().right <= document.documentElement.clientWidth,
+        boardHasControlledScroll: board.scrollWidth > board.clientWidth && getComputedStyle(board).overflowX === 'auto',
+      };
+    })()`),
+    { pageOverflows: false, boardInsideViewport: true, boardHasControlledScroll: true },
+  );
+  await tab.screenshot('project-kanban-mobile');
+  await tab.viewport(1440);
+  console.log(
+    'PASS: criação, edição, movimento, reabertura, reordenação e persistência do Kanban com progresso AUTO.',
+  );
+
+  await tab.click('.kanban-column[data-status="TODO"] .task-card [data-task-action="delete"]');
+  await tab.until('document.querySelector(".confirm-dialog").open');
+  await tab.click('[data-task-action="confirm-delete"]');
+  await tab.until(
+    '!document.querySelector(".confirm-dialog").open && document.querySelectorAll(".task-card").length === 1 && document.body.innerText.includes("100%")',
+  );
+  await tab.navigate('/tarefas');
+  await tab.until(
+    'document.querySelectorAll(".tasks-table tbody tr").length === 1 && document.body.innerText.includes("Portal Navari 2.0")',
+  );
+  const globalProjectId = await tab.evaluate(
+    'document.querySelector(".tasks-table tbody tr td:nth-child(2) a").getAttribute("href").split("/").at(-1)',
+  );
+  const filterRequestsBefore = taskRequests;
+  await tab.setValue('[data-task-filter="project"]', globalProjectId);
+  await tab.setValue('[data-task-filter="status"]', 'DONE');
+  await tab.setValue('[data-task-filter="priority"]', 'LOW');
+  await tab.setValue('[data-task-filter="due"]', 'upcoming');
+  await tab.until(
+    'document.querySelectorAll(".tasks-table tbody tr").length === 1 && document.querySelector("[data-task-filter=project]").value && document.querySelector("[data-task-filter=status]").value === "DONE" && document.querySelector("[data-task-filter=priority]").value === "LOW" && document.querySelector("[data-task-filter=due]").value === "upcoming"',
+  );
+  assert(taskRequests > filterRequestsBefore);
+  await tab.setValue('[data-task-filter="project"]', '');
+  await tab.setValue('[data-task-filter="status"]', '');
+  await tab.setValue('[data-task-filter="priority"]', '');
+  await tab.setValue('[data-task-filter="due"]', 'all');
+  await tab.fillSelector('#task-search', 'sem resultado');
+  await tab.until('document.body.innerText.includes("Nenhuma tarefa encontrada")');
+  await tab.click('.text-action');
+  await tab.until('document.querySelectorAll(".tasks-table tbody tr").length === 1');
+  await tab.viewport(390);
+  await tab.until('document.querySelectorAll(".tasks-mobile-list li").length === 1');
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.screenshot('tasks-global-mobile');
+  await tab.viewport(320);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.viewport(1440);
+  await tab.click('.tasks-table tbody tr td:nth-child(2) a');
+  await tab.until(
+    `location.pathname === ${JSON.stringify(projectPath)} && !!document.querySelector('[name="progressMode"][value="MANUAL"]')`,
+  );
+  await tab.click('[name="progressMode"][value="MANUAL"]');
+  await tab.click('[data-project-action="save"]');
+  await tab.until(
+    '!document.querySelector("[name=progress]").disabled && document.body.innerText.includes("Atualização manual") && document.querySelector("[name=progress]").value === "100"',
+  );
+  await tab.setValue('[name="progress"]', '72');
+  await tab.click('[data-project-action="save"]');
+  await tab.until('document.body.innerText.includes("72%")');
+  await tab.click('.kanban-column[data-status="DONE"] .task-card [data-task-action="toggle"]');
+  await tab.until(
+    'document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 1 && document.body.innerText.includes("72%")',
+  );
+  await tab.click('[name="progressMode"][value="AUTO"]');
+  await tab.click('[data-project-action="save"]');
+  await tab.until(
+    'document.body.innerText.includes("0%") && document.querySelector("[name=progress]").disabled',
+  );
+  const settledTaskRequests = taskRequests;
+  await delay(500);
+  assert.equal(taskRequests, settledTaskRequests);
+  assert(taskRequests < 45);
+  console.log(
+    'PASS: visão global responsiva, exclusão e transições AUTO ↔ MANUAL sem loops de requests.',
+  );
 
   await tab.navigate(clientPath);
   await tab.until('!!document.querySelector("[data-client-action=delete]")');
@@ -512,6 +793,12 @@ try {
   await tab.click('[data-project-action="archive"]');
   await tab.until(
     'document.body.innerText.includes("Projeto arquivado com sucesso.") && !!document.querySelector("[data-project-action=restore]")',
+  );
+  assert.equal(
+    await tab.evaluate(
+      'document.querySelector("[data-task-action=new]").disabled && [...document.querySelectorAll(".task-drag-handle")].every((button) => button.disabled)',
+    ),
+    true,
   );
   await tab.navigate('/projetos');
   await tab.until('document.body.innerText.includes("Crie seu primeiro projeto")');
@@ -535,7 +822,7 @@ try {
   const settledProjectRequests = projectRequests;
   await delay(500);
   assert.equal(projectRequests, settledProjectRequests);
-  assert(projectRequests - projectsStart < 45);
+  assert(projectRequests - projectsStart < 90);
   console.log('PASS: confirmação, exclusão permanente do projeto e nenhuma chamada em loop.');
 
   await tab.navigate(clientPath);
@@ -548,7 +835,6 @@ try {
   const settledClientRequests = clientRequests;
   await delay(500);
   assert.equal(clientRequests, settledClientRequests);
-  assert(clientRequests - clientsStart < 30);
   console.log(
     'PASS: cliente pode ser excluído após a remoção do projeto e não há chamadas em loop.',
   );

@@ -7,6 +7,7 @@ export const projectStatusSchema = z.enum([
   'COMPLETED',
   'CANCELLED',
 ]);
+export const progressModeSchema = z.enum(['MANUAL', 'AUTO']);
 
 const date = z.iso.date('Informe uma data válida.');
 const dueDate = z.union([z.literal(''), date]);
@@ -28,6 +29,7 @@ export const projectFormSchema = z
       .trim()
       .regex(/^\d{1,10}(?:\.\d{1,2})?$/, 'Informe um valor com até duas casas decimais.'),
     progress: z.number().int('Informe um número inteiro.').min(0).max(100),
+    progressMode: progressModeSchema,
   })
   .superRefine((value, context) => {
     if (value.dueDate && value.dueDate < value.startDate) {
@@ -40,4 +42,5 @@ export const projectFormSchema = z
   });
 
 export type ProjectStatus = z.infer<typeof projectStatusSchema>;
+export type ProgressMode = z.infer<typeof progressModeSchema>;
 export type ProjectFormInput = z.infer<typeof projectFormSchema>;

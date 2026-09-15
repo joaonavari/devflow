@@ -27,3 +27,11 @@ export function invalidProjectDates(): ProjectError {
     'O prazo não pode ser anterior à data de início.',
   );
 }
+
+export function projectProgressManaged(): ProjectError {
+  return new ProjectError(
+    409,
+    'PROJECT_PROGRESS_MANAGED',
+    'O progresso deste projeto é calculado automaticamente pelas tarefas.',
+  );
+}

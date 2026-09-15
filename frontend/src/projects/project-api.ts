@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { ApiError, authenticatedFetch } from '../auth/auth-api';
-import { projectStatusSchema, type ProjectFormInput, type ProjectStatus } from './project-schemas';
+import {
+  progressModeSchema,
+  projectStatusSchema,
+  type ProjectFormInput,
+  type ProjectStatus,
+} from './project-schemas';
 
 const projectClientSchema = z.object({
   id: z.uuid(),
@@ -18,6 +23,7 @@ const projectSchema = z.object({
   dueDate: z.iso.date().nullable(),
   budget: z.string(),
   progress: z.number().int().min(0).max(100),
+  progressMode: progressModeSchema,
   archivedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -81,7 +87,8 @@ function payload(input: ProjectFormInput) {
     startDate: input.startDate,
     dueDate: input.dueDate || null,
     budget: input.budget,
-    progress: input.progress,
+    ...(input.progressMode === 'MANUAL' ? { progress: input.progress } : {}),
+    progressMode: input.progressMode,
   };
 }
 

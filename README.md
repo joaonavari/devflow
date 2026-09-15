@@ -3,24 +3,26 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 5 — Projetos
+## Estado atual: Etapa 6 — Tasks & Kanban
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
-- Prisma com `User`, `AuthSession`, `Client`, `Project` e migrations aplicadas ao PostgreSQL.
+- Prisma com `User`, `AuthSession`, `Client`, `Project`, `Task` e migrations aplicadas ao PostgreSQL.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
 - Cadastro, login, logout, restauração e rotação de sessão integrados à API real.
 - CRUD real de clientes com busca, arquivamento, restauração e isolamento por usuário.
 - CRUD real de projetos com busca, filtros, progresso, orçamento e isolamento por usuário.
+- Tasks reais, visão global, Kanban por projeto e progresso automático opcional.
 - Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-Tarefas, Kanban, horas, financeiro, dashboard funcional, portal do cliente e CI/CD
-não fazem parte desta entrega. Essas áreas continuam com os placeholders aprovados
-da Etapa 2. Consulte os relatórios da
+Horas, financeiro, dashboard funcional, portal do cliente e CI/CD não fazem parte
+desta entrega. Essas áreas continuam com os placeholders aprovados da Etapa 2.
+Consulte os relatórios da
 [Etapa 3](docs/etapa-3-autenticacao.md) e da
 [Etapa 4](docs/etapa-4-clientes.md), além do relatório da
-[Etapa 5](docs/etapa-5-projetos.md), para decisões e resultados de validação.
+[Etapa 5](docs/etapa-5-projetos.md) e da
+[Etapa 6](docs/etapa-6-tasks-kanban.md), para decisões e resultados de validação.
 
 ## Pré-requisitos
 
@@ -152,10 +154,12 @@ npm run db:validate
 npm run db:generate
 ```
 
-O schema define o provider PostgreSQL, `User`, `AuthSession`, `Client` e `Project`.
+O schema define o provider PostgreSQL, `User`, `AuthSession`, `Client`, `Project` e
+`Task`.
 As migrations `20260915024133_stage3_authentication`,
-`20260915032455_stage4_clients` e `20260915174001_stage5_projects` criam as tabelas,
-índices, constraints e relações. O
+`20260915032455_stage4_clients`, `20260915174001_stage5_projects` e
+`20260915181540_stage6_tasks_kanban` criam as tabelas, índices, constraints e
+relações. O
 Prisma está fixado na versão 7.10.0, com o adaptador PostgreSQL da mesma
 versão. O client gerado fica em `backend/src/generated/prisma/`, ignorado pelo Git,
 e é incluído na compilação do backend.
@@ -356,6 +360,39 @@ npm run test:projects
 A suíte usa dois usuários, dois clientes e dois projetos para comprovar isolamento
 em criação, associação, listagem, busca, filtros, detalhe, edição, archive, restore
 e delete. O teste de navegador percorre o fluxo integrado de Clientes e Projetos.
+
+## Tasks, Kanban e progresso da Etapa 6
+
+| Endpoint                                 | Comportamento                        |
+| ---------------------------------------- | ------------------------------------ |
+| `GET /api/v1/projects/:projectId/tasks`  | Lista tarefas do projeto pertencente |
+| `POST /api/v1/projects/:projectId/tasks` | Cria em projeto ativo pertencente    |
+| `GET /api/v1/tasks`                      | Visão global com busca e filtros     |
+| `GET /api/v1/tasks/:taskId`              | Retorna uma tarefa pertencente       |
+| `PATCH /api/v1/tasks/:taskId`            | Atualiza os dados da tarefa          |
+| `PATCH /api/v1/tasks/:taskId/move`       | Persiste status e posição sequencial |
+| `DELETE /api/v1/tasks/:taskId`           | Exclui e normaliza a coluna          |
+
+As tarefas usam os status `TODO`, `IN_PROGRESS` e `DONE`, prioridades de `LOW` a
+`URGENT` e posições inteiras normalizadas por projeto e status. Ao entrar em
+`DONE`, `completedAt` recebe um timestamp; ao reabrir, volta a `null`. Projeto
+arquivado mantém a leitura e bloqueia todas as mutações de tarefas.
+
+`Project.progressMode` usa `MANUAL` por padrão para preservar projetos existentes.
+Em `AUTO`, a API calcula `DONE / total`, arredonda ao inteiro mais próximo e usa
+zero quando não há tarefas. O valor derivado não é persistido. A troca para AUTO
+recalcula imediatamente; a volta para MANUAL congela o percentual calculado.
+
+O Kanban de `/projetos/:projectId` usa dnd-kit, atualização otimista com rollback e
+controles de status e ordem acessíveis por teclado. `/tarefas` oferece busca e
+filtros globais com identificação do projeto.
+
+```sh
+npm run test:tasks
+```
+
+A suíte cobre operações, posições, progresso e isolamento entre usuários por meio
+da relação `Task → Project → User`.
 
 ## Autenticação e testes da Etapa 3
 

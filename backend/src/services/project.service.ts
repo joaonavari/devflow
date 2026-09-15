@@ -5,7 +5,12 @@ import type {
   ListProjectsQuery,
   UpdateProjectInput,
 } from '../validators/project.schemas.js';
-import { invalidProjectDates, projectClientUnavailable, projectNotFound } from './project-error.js';
+import {
+  invalidProjectDates,
+  projectClientUnavailable,
+  projectNotFound,
+  projectProgressManaged,
+} from './project-error.js';
 
 export const publicProjectSelect = {
   id: true,
@@ -17,10 +22,12 @@ export const publicProjectSelect = {
   dueDate: true,
   budget: true,
   progress: true,
+  progressMode: true,
   archivedAt: true,
   createdAt: true,
   updatedAt: true,
   client: { select: { id: true, name: true, email: true, archivedAt: true } },
+  _count: { select: { tasks: true } },
 } satisfies Prisma.ProjectSelect;
 
 type PublicProject = Prisma.ProjectGetPayload<{ select: typeof publicProjectSelect }>;
@@ -33,13 +40,32 @@ function dateToApi(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-function serializeProject(project: PublicProject) {
+function calculatedProgress(total: number, completed: number): number {
+  return total === 0 ? 0 : Math.round((completed / total) * 100);
+}
+
+function serializeProject(project: PublicProject, completedTasks = 0) {
+  const { _count, ...publicData } = project;
   return {
-    ...project,
+    ...publicData,
     startDate: dateToApi(project.startDate),
     dueDate: project.dueDate ? dateToApi(project.dueDate) : null,
     budget: project.budget.toFixed(2),
+    progress:
+      project.progressMode === 'AUTO'
+        ? calculatedProgress(_count.tasks, completedTasks)
+        : project.progress,
   };
+}
+
+async function completedTaskCounts(projectIds: string[]): Promise<Map<string, number>> {
+  if (projectIds.length === 0) return new Map();
+  const groups = await database.task.groupBy({
+    by: ['projectId'],
+    where: { projectId: { in: projectIds }, status: 'DONE' },
+    _count: { _all: true },
+  });
+  return new Map(groups.map((group) => [group.projectId, group._count._all]));
 }
 
 async function requireActiveClient(userId: string, clientId: string): Promise<void> {
@@ -59,7 +85,6 @@ function updateData(input: UpdateProjectInput): Prisma.ProjectUncheckedUpdateMan
   if (input.startDate !== undefined) data.startDate = dateFromApi(input.startDate);
   if (input.dueDate !== undefined) data.dueDate = input.dueDate ? dateFromApi(input.dueDate) : null;
   if (input.budget !== undefined) data.budget = new Prisma.Decimal(input.budget);
-  if (input.progress !== undefined) data.progress = input.progress;
   return data;
 }
 
@@ -83,11 +108,16 @@ export async function listProjects(userId: string, query: ListProjectsQuery) {
     select: publicProjectSelect,
     orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
   });
-  return projects.map(serializeProject);
+  const automaticIds = projects
+    .filter((project) => project.progressMode === 'AUTO')
+    .map((project) => project.id);
+  const completed = await completedTaskCounts(automaticIds);
+  return projects.map((project) => serializeProject(project, completed.get(project.id) ?? 0));
 }
 
 export async function createProject(userId: string, input: CreateProjectInput) {
   await requireActiveClient(userId, input.clientId);
+  if (input.progressMode === 'AUTO' && input.progress !== 0) throw projectProgressManaged();
   const project = await database.project.create({
     data: {
       userId,
@@ -99,6 +129,7 @@ export async function createProject(userId: string, input: CreateProjectInput) {
       dueDate: input.dueDate ? dateFromApi(input.dueDate) : null,
       budget: new Prisma.Decimal(input.budget),
       progress: input.progress,
+      progressMode: input.progressMode,
     },
     select: publicProjectSelect,
   });
@@ -111,13 +142,24 @@ export async function getProject(userId: string, projectId: string) {
     select: publicProjectSelect,
   });
   if (!project) throw projectNotFound();
-  return serializeProject(project);
+  const completed =
+    project.progressMode === 'AUTO'
+      ? await database.task.count({ where: { projectId, status: 'DONE' } })
+      : 0;
+  return serializeProject(project, completed);
 }
 
 export async function updateProject(userId: string, projectId: string, input: UpdateProjectInput) {
   const existing = await database.project.findFirst({
     where: { id: projectId, userId },
-    select: { clientId: true, startDate: true, dueDate: true },
+    select: {
+      clientId: true,
+      startDate: true,
+      dueDate: true,
+      progress: true,
+      progressMode: true,
+      _count: { select: { tasks: true } },
+    },
   });
   if (!existing) throw projectNotFound();
   if (input.clientId !== undefined && input.clientId !== existing.clientId) {
@@ -131,9 +173,18 @@ export async function updateProject(userId: string, projectId: string, input: Up
         ? dateFromApi(input.dueDate)
         : null;
   if (dueDate && dueDate < startDate) throw invalidProjectDates();
+  const nextMode = input.progressMode ?? existing.progressMode;
+  if (nextMode === 'AUTO' && input.progress !== undefined) throw projectProgressManaged();
+  const data = updateData(input);
+  if (input.progressMode !== undefined) data.progressMode = input.progressMode;
+  if (nextMode === 'MANUAL' && input.progress !== undefined) data.progress = input.progress;
+  if (existing.progressMode === 'AUTO' && nextMode === 'MANUAL') {
+    const completed = await database.task.count({ where: { projectId, status: 'DONE' } });
+    data.progress = calculatedProgress(existing._count.tasks, completed);
+  }
   const updated = await database.project.updateMany({
     where: { id: projectId, userId },
-    data: updateData(input),
+    data,
   });
   if (updated.count !== 1) throw projectNotFound();
   return getProject(userId, projectId);
@@ -147,9 +198,9 @@ export async function archiveProject(userId: string, projectId: string) {
   if (updated.count !== 1) {
     const existing = await database.project.findFirst({
       where: { id: projectId, userId, archivedAt: { not: null } },
-      select: publicProjectSelect,
+      select: { id: true },
     });
-    if (existing) return serializeProject(existing);
+    if (existing) return getProject(userId, projectId);
     throw projectNotFound();
   }
   return getProject(userId, projectId);
@@ -163,9 +214,9 @@ export async function restoreProject(userId: string, projectId: string) {
   if (updated.count !== 1) {
     const existing = await database.project.findFirst({
       where: { id: projectId, userId, archivedAt: null },
-      select: publicProjectSelect,
+      select: { id: true },
     });
-    if (existing) return serializeProject(existing);
+    if (existing) return getProject(userId, projectId);
     throw projectNotFound();
   }
   return getProject(userId, projectId);

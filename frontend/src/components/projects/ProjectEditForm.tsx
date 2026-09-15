@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useAuth } from '../../auth/auth-context';
 import type { Client } from '../../clients/client-api';
 import {
@@ -28,6 +28,7 @@ function valuesFrom(project: Project): ProjectFormInput {
     dueDate: project.dueDate ?? '',
     budget: project.budget,
     progress: project.progress,
+    progressMode: project.progressMode,
   };
 }
 
@@ -42,6 +43,7 @@ export function ProjectEditForm({ project, clients, onSaved }: ProjectEditFormPr
     handleSubmit,
     setError,
     reset,
+    control,
     formState: { errors, isDirty },
   } = useForm<ProjectFormInput>({
     resolver: zodResolver(projectFormSchema),
@@ -50,6 +52,7 @@ export function ProjectEditForm({ project, clients, onSaved }: ProjectEditFormPr
   const mutation = useMutation({
     mutationFn: (input: ProjectFormInput) => updateProject(project.id, input),
   });
+  const progressMode = useWatch({ control, name: 'progressMode' });
 
   async function submit(input: ProjectFormInput) {
     try {
@@ -81,7 +84,12 @@ export function ProjectEditForm({ project, clients, onSaved }: ProjectEditFormPr
       aria-busy={mutation.isPending}
       onSubmit={(event) => void handleSubmit(submit)(event)}
     >
-      <ProjectFormFields register={register} errors={errors} clients={availableClients} />
+      <ProjectFormFields
+        register={register}
+        errors={errors}
+        clients={availableClients}
+        progressMode={progressMode}
+      />
       {errors.root && (
         <p className="form-error" role="alert">
           {errors.root.message}

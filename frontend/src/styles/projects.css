@@ -77,6 +77,43 @@
     font-size: var(--text-sm);
   }
 
+  .project-progress-mode {
+    min-width: 0;
+    border: 0;
+  }
+
+  .project-progress-mode legend {
+    margin-bottom: var(--spacing-2);
+  }
+
+  .project-progress-mode > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-2);
+  }
+
+  .project-progress-mode label {
+    display: flex;
+    min-height: var(--target-size);
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-secondary);
+    background: var(--color-background);
+    font-size: var(--text-sm);
+  }
+
+  .project-progress-mode label:has(input:checked) {
+    border-color: var(--color-accent);
+    color: var(--color-text);
+  }
+
+  .project-progress-mode input {
+    accent-color: var(--color-accent);
+  }
+
   .projects-search input {
     padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) 2.6rem;
   }

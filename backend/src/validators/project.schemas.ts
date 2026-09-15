@@ -7,6 +7,7 @@ export const projectStatusSchema = z.enum([
   'COMPLETED',
   'CANCELLED',
 ]);
+export const progressModeSchema = z.enum(['MANUAL', 'AUTO']);
 
 const projectDate = z.iso.date('Informe uma data válida.');
 const optionalDescription = z
@@ -28,6 +29,7 @@ const projectFields = {
   dueDate: optionalDueDate,
   budget,
   progress: z.number().int('Informe um progresso inteiro.').min(0).max(100),
+  progressMode: progressModeSchema,
 };
 
 function validateDateRange(
@@ -51,6 +53,7 @@ export const createProjectSchema = z
     dueDate: projectFields.dueDate.default(null),
     budget: projectFields.budget.default('0.00'),
     progress: projectFields.progress.default(0),
+    progressMode: projectFields.progressMode.default('MANUAL'),
   })
   .superRefine(validateDateRange);
 
@@ -64,6 +67,7 @@ export const updateProjectSchema = z
     dueDate: projectFields.dueDate,
     budget: projectFields.budget.optional(),
     progress: projectFields.progress.optional(),
+    progressMode: projectFields.progressMode.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'Informe ao menos um campo para atualizar.')
   .superRefine(validateDateRange);

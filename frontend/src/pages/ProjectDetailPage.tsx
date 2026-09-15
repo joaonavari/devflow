@@ -7,6 +7,7 @@ import { clientKeys, listClients } from '../clients/client-api';
 import { EmptyState } from '../components/EmptyState';
 import { DeleteProjectDialog } from '../components/projects/DeleteProjectDialog';
 import { ProjectEditForm } from '../components/projects/ProjectEditForm';
+import { ProjectKanban } from '../components/tasks/ProjectKanban';
 import {
   changeProjectArchive,
   deleteProject,
@@ -186,6 +187,11 @@ export function ProjectDetailPage() {
           <span className="project-progress-track is-large" aria-hidden="true">
             <span style={{ width: `${String(project.progress)}%` }} />
           </span>
+          <small>
+            {project.progressMode === 'AUTO'
+              ? 'Calculado pelas tarefas concluídas'
+              : 'Atualização manual'}
+          </small>
         </div>
         <dl>
           <div>
@@ -207,12 +213,18 @@ export function ProjectDetailPage() {
         </dl>
       </section>
 
+      <ProjectKanban
+        projectId={project.id}
+        archived={Boolean(project.archivedAt)}
+        onTasksChanged={() => void query.refetch()}
+      />
+
       <div className="project-detail-grid">
         <section className="detail-section" aria-labelledby="project-data-title">
           <div className="detail-section-heading">
             <div>
               <h2 id="project-data-title">Dados do projeto</h2>
-              <p>Cliente, escopo, datas e acompanhamento manual.</p>
+              <p>Cliente, escopo, datas e forma de acompanhamento.</p>
             </div>
           </div>
           {clientsQuery.isError ? (

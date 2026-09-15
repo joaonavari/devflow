@@ -5,6 +5,7 @@ import { projectStatusLabels } from '../../projects/project-format';
 import {
   projectStatusSchema,
   type ProjectFormInput,
+  type ProgressMode,
   type ProjectStatus,
 } from '../../projects/project-schemas';
 import { FormField } from '../auth/FormField';
@@ -14,12 +15,14 @@ interface ProjectFormFieldsProps {
   errors: FieldErrors<ProjectFormInput>;
   clients: Pick<Client, 'id' | 'name' | 'archivedAt'>[];
   autoFocusName?: boolean;
+  progressMode: ProgressMode;
 }
 
 export function ProjectFormFields({
   register,
   errors,
   clients,
+  progressMode,
   autoFocusName = false,
 }: ProjectFormFieldsProps) {
   const descriptionId = useId();
@@ -123,6 +126,24 @@ export function ProjectFormFields({
         error={errors.budget?.message}
         hint="Use ponto para os centavos."
       />
+      <fieldset className="form-field project-progress-mode">
+        <legend>Cálculo do progresso</legend>
+        <div>
+          <label>
+            <input type="radio" value="MANUAL" {...register('progressMode')} />
+            Manual
+          </label>
+          <label>
+            <input type="radio" value="AUTO" {...register('progressMode')} />
+            Automático
+          </label>
+        </div>
+        <span className="field-hint">
+          {progressMode === 'AUTO'
+            ? 'Tarefas concluídas definem o percentual.'
+            : 'Você informa o percentual do projeto.'}
+        </span>
+      </fieldset>
       <FormField
         label="Progresso (%)"
         type="number"
@@ -130,6 +151,7 @@ export function ProjectFormFields({
         max={100}
         step={1}
         required
+        disabled={progressMode === 'AUTO'}
         {...register('progress', { valueAsNumber: true })}
         error={errors.progress?.message}
       />

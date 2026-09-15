@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useAuth } from '../../auth/auth-context';
 import type { Client } from '../../clients/client-api';
 import { createProject, ProjectApiError, projectKeys } from '../../projects/project-api';
@@ -26,6 +26,7 @@ const defaults: ProjectFormInput = {
   dueDate: '',
   budget: '0.00',
   progress: 0,
+  progressMode: 'MANUAL',
 };
 
 export function ProjectCreateDialog({
@@ -42,12 +43,14 @@ export function ProjectCreateDialog({
     handleSubmit,
     setError,
     reset,
+    control,
     formState: { errors },
   } = useForm<ProjectFormInput>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: defaults,
   });
   const mutation = useMutation({ mutationFn: createProject });
+  const progressMode = useWatch({ control, name: 'progressMode' });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -117,7 +120,13 @@ export function ProjectCreateDialog({
         aria-busy={mutation.isPending}
         onSubmit={(event) => void handleSubmit(submit)(event)}
       >
-        <ProjectFormFields register={register} errors={errors} clients={clients} autoFocusName />
+        <ProjectFormFields
+          register={register}
+          errors={errors}
+          clients={clients}
+          progressMode={progressMode}
+          autoFocusName
+        />
         {errors.root && (
           <p className="form-error" role="alert">
             {errors.root.message}

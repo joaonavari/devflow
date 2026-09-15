@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { AuthError } from '../services/auth-error.js';
 import { ClientError } from '../services/client-error.js';
 import { ProjectError } from '../services/project-error.js';
+import { TaskError } from '../services/task-error.js';
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
   if (response.headersSent) {
@@ -11,7 +12,12 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   }
 
   response.setHeader('Cache-Control', 'no-store');
-  if (error instanceof AuthError || error instanceof ClientError || error instanceof ProjectError) {
+  if (
+    error instanceof AuthError ||
+    error instanceof ClientError ||
+    error instanceof ProjectError ||
+    error instanceof TaskError
+  ) {
     response.status(error.status).json({ error: { code: error.code, message: error.message } });
     return;
   }
