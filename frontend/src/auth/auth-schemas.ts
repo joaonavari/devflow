@@ -7,7 +7,7 @@ export const registerSchema = loginSchema
     name: z.string().trim().min(2, 'Informe seu nome.').max(100, 'Use até 100 caracteres.'),
     password: z
       .string()
-      .min(12, 'Use pelo menos 12 caracteres.')
+      .min(8, 'Use pelo menos 8 caracteres.')
       .refine(
         (value) => new TextEncoder().encode(value).length <= 72,
         'Use até 72 bytes. Acentos e emojis ocupam mais de um byte.',

@@ -123,7 +123,7 @@ e erros usam `Cache-Control: no-store`.
 
 ## 7. Estratégia de autenticação
 
-- Senhas: bcrypt assíncrono, custo 12; mínimo de 12 caracteres e limite de 72
+- Senhas: bcrypt assíncrono, custo 12; mínimo de 8 caracteres e limite de 72
   bytes UTF-8, validado antes do hashing para impedir truncamento silencioso.
 - JWT: HS256 com chave aleatória de 256 bits; validade de 15 minutos;
   `sub`, `sid`, `iat`, `exp`, issuer, audience e algoritmo verificados.

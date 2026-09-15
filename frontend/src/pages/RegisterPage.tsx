@@ -75,7 +75,7 @@ export function RegisterPage() {
           type="password"
           autoComplete="new-password"
           required
-          hint="Use pelo menos 12 caracteres."
+          hint="Use pelo menos 8 caracteres."
           {...register('password')}
           error={errors.password?.message}
         />

@@ -11,7 +11,7 @@ import { accessCookie, refreshCookie } from '../controllers/auth-cookies.js';
 import { hashRefreshToken, refreshSessionId } from '../services/auth-tokens.js';
 
 const email = `auth-test-${randomUUID()}@example.test`;
-const password = 'DevFlow-test-password-2026';
+const password = 'DevFlow8';
 const server = app.listen(0, '127.0.0.1');
 let base = '';
 
@@ -243,7 +243,7 @@ void test('autenticação integrada ao PostgreSQL', async (suite) => {
       { userId: randomUUID() },
       { password: '😀'.repeat(19) },
       { timezone: 'not/a-zone' },
-      { password: 'short' },
+      { password: '1234567' },
     ]) {
       assert.equal(
         (await call('register', { name: 'Teste', email, password, ...extra })).status,

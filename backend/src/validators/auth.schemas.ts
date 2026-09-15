@@ -3,7 +3,7 @@ import { z } from 'zod';
 const email = z.string().trim().toLowerCase().pipe(z.email('Informe um email válido.').max(254));
 const password = z
   .string()
-  .min(12, 'Use pelo menos 12 caracteres.')
+  .min(8, 'Use pelo menos 8 caracteres.')
   .refine(
     (value) => Buffer.byteLength(value, 'utf8') <= 72,
     'Use uma senha de até 72 bytes (acentos e emojis ocupam mais de um byte).',

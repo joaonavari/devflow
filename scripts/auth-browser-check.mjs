@@ -6,7 +6,7 @@ import { database } from '../backend/src/config/database.ts';
 // Uses an isolated Chrome context. Requires npm run dev and Chrome with CDP on 9222.
 const origin = 'http://127.0.0.1:5173';
 const email = `browser-auth-${randomUUID()}@example.test`;
-const password = 'DevFlow-browser-password-2026';
+const password = 'DevFlow8';
 const output = process.env.AUTH_SCREENSHOT_DIR ?? '/private/tmp/devflow-stage3';
 const sockets = [];
 const exceptions = [];
@@ -173,6 +173,12 @@ try {
   assert.equal(await tab.evaluate('document.activeElement.name'), 'name');
   await tab.fill('name', 'Usuário de Validação');
   await tab.fill('email', email);
+  await tab.fill('password', '1234567');
+  await tab.fill('confirmPassword', '1234567');
+  await tab.click('button[type=submit]');
+  await tab.until(
+    'document.querySelector(".field-error")?.textContent === "Use pelo menos 8 caracteres."',
+  );
   await tab.fill('password', password);
   await tab.fill('confirmPassword', 'different-password');
   await tab.click('button[type=submit]');
