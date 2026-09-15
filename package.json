@@ -12,6 +12,7 @@
   },
   "scripts": {
     "test:auth": "npm run test:auth --workspace @devflow/backend",
+    "test:clients": "npm run test:clients --workspace @devflow/backend",
     "test:auth:browser": "node --import tsx scripts/auth-browser-check.mjs",
     "dev": "concurrently --kill-others --names api,web --prefix-colors blue,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "npm run dev --workspace @devflow/frontend",

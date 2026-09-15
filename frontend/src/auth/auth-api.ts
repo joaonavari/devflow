@@ -34,6 +34,38 @@ async function request(path: string, body?: object): Promise<Response> {
   }
 }
 
+export async function authenticatedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const execute = async () => {
+    try {
+      const method = init.method ?? 'GET';
+      const writeRequest = !['GET', 'HEAD'].includes(method.toUpperCase());
+      const headers = new Headers(init.headers);
+      if (writeRequest) {
+        if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+        headers.set('X-DevFlow-Request', '1');
+      }
+      return await fetch(path, {
+        ...init,
+        credentials: 'include',
+        cache: 'no-store',
+        headers,
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch {
+      throw new ApiError(
+        0,
+        'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.',
+      );
+    }
+  };
+
+  let response = await execute();
+  if (response.status !== 401) return response;
+  const user = await discoverSession();
+  if (user) response = await execute();
+  return response;
+}
+
 async function readUser(response: Response): Promise<AuthUser> {
   const data: unknown = await response.json();
   if (!response.ok) {

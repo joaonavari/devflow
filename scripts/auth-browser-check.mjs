@@ -11,6 +11,7 @@ const output = process.env.AUTH_SCREENSHOT_DIR ?? '/private/tmp/devflow-stage3';
 const sockets = [];
 const exceptions = [];
 let refreshRequests = 0;
+let clientRequests = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function connect(url) {
@@ -39,6 +40,11 @@ async function connect(url) {
       message.params.request.url.endsWith('/auth/refresh')
     )
       refreshRequests++;
+    if (
+      message.method === 'Network.requestWillBeSent' &&
+      message.params.request.url.includes('/api/v1/clients')
+    )
+      clientRequests++;
   });
   return (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -110,6 +116,27 @@ async function page(browser, context) {
     );
     await send('Input.insertText', { text });
   };
+  const fillSelector = async (selector, text) => {
+    await evaluate(
+      `document.querySelector(${JSON.stringify(selector)}).focus(); document.querySelector(${JSON.stringify(selector)}).select()`,
+    );
+    if (text) {
+      await send('Input.insertText', { text });
+    } else {
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Backspace',
+        code: 'Backspace',
+        windowsVirtualKeyCode: 8,
+      });
+      await send('Input.dispatchKeyEvent', {
+        type: 'keyUp',
+        key: 'Backspace',
+        code: 'Backspace',
+        windowsVirtualKeyCode: 8,
+      });
+    }
+  };
   const click = (selector) =>
     evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
   const viewport = (width) =>
@@ -127,7 +154,18 @@ async function page(browser, context) {
     });
     await writeFile(`${output}/${name}.png`, Buffer.from(result.data, 'base64'));
   };
-  return { send, evaluate, until, navigate, reload, fill, click, viewport, screenshot };
+  return {
+    send,
+    evaluate,
+    until,
+    navigate,
+    reload,
+    fill,
+    fillSelector,
+    click,
+    viewport,
+    screenshot,
+  };
 }
 
 let browser;
@@ -279,9 +317,109 @@ try {
   console.log(
     'PASS: logout sincroniza abas, login inválido mostra erro, login via Enter retorna à rota solicitada.',
   );
+
+  await tab.viewport(1440);
+  const clientsStart = clientRequests;
+  await tab.navigate('/clientes');
+  await tab.until('document.body.innerText.includes("Cadastre seu primeiro cliente")');
+  await tab.screenshot('clients-empty-desktop');
+  await tab.click('[data-client-action="new"]');
+  await tab.until('document.querySelector(".client-dialog").open');
+  await tab.until('document.activeElement.name === "name"');
+  await tab.fill('name', 'Navari Studio');
+  await tab.fill('email', 'contato@navari.example');
+  await tab.fill('phone', '+55 11 98888-7777');
+  await tab.fill('company', 'Navari Design');
+  await tab.click('[data-client-action="create"]');
+  await tab.until(
+    'document.body.innerText.includes("Navari Studio foi cadastrado com sucesso.") && !!document.querySelector(".clients-table [data-client-link]")',
+  );
+  await tab.screenshot('clients-list-desktop');
+  console.log('PASS: estado vazio, criação e atualização da lista sem reload.');
+
+  await tab.fillSelector('#client-search', 'Navari Design');
+  await tab.until(
+    'document.querySelectorAll(".clients-table tbody tr").length === 1 && document.body.innerText.includes("Navari Studio")',
+  );
+  await tab.fillSelector('#client-search', 'sem resultado');
+  await tab.until('document.body.innerText.includes("Nenhum cliente encontrado")');
+  await tab.click('.text-action');
+  await tab.until('!!document.querySelector(".clients-table [data-client-link]")');
+  console.log('PASS: busca por empresa e estado de nenhum resultado.');
+
+  await tab.viewport(390);
+  await tab.until('!!document.querySelector(".clients-mobile-list [data-client-link]")');
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.screenshot('clients-list-mobile');
+  await tab.viewport(320);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.viewport(1440);
+  await tab.click('.clients-table [data-client-link]');
+  await tab.until(
+    'location.pathname.startsWith("/clientes/") && document.querySelector("h1")?.textContent === "Navari Studio"',
+  );
+  await tab.fill('name', 'Navari Studio Atualizado');
+  await tab.fill('email', 'novo@navari.example');
+  await tab.fill('phone', '+55 11 97777-6666');
+  await tab.fill('company', 'Navari Produtos');
+  await tab.click('[data-client-action="save"]');
+  await tab.until(
+    'document.body.innerText.includes("Navari Studio Atualizado foi atualizado com sucesso.")',
+  );
+  await tab.screenshot('client-detail-desktop');
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("h1")?.textContent === "Navari Studio Atualizado" && document.querySelector("[name=email]")?.value === "novo@navari.example"',
+  );
+  console.log('PASS: detalhe, edição e persistência após reload.');
+
+  await tab.click('[data-client-action="archive"]');
+  await tab.until(
+    'document.body.innerText.includes("Cliente arquivado com sucesso.") && !!document.querySelector("[data-client-action=restore]")',
+  );
+  await tab.navigate('/clientes');
+  await tab.until('document.body.innerText.includes("Cadastre seu primeiro cliente")');
+  await tab.click('[data-client-status="archived"]');
+  await tab.until('!!document.querySelector(".clients-table [data-client-link]")');
+  await tab.click('.clients-table [data-client-link]');
+  await tab.until('!!document.querySelector("[data-client-action=restore]")');
+  await tab.click('[data-client-action="restore"]');
+  await tab.until(
+    'document.body.innerText.includes("Cliente restaurado com sucesso.") && !!document.querySelector("[data-client-action=archive]")',
+  );
+  await tab.navigate('/clientes');
+  await tab.until('!!document.querySelector(".clients-table [data-client-link]")');
+  console.log('PASS: arquivamento remove dos ativos, filtro de arquivados e restauração.');
+
+  await tab.click('.clients-table [data-client-link]');
+  await tab.until('!!document.querySelector("[data-client-action=delete]")');
+  await tab.click('[data-client-action="delete"]');
+  await tab.until('document.querySelector(".confirmation-dialog").open');
+  assert.equal(await tab.evaluate('document.activeElement.textContent.trim()'), 'Cancelar');
+  await tab.screenshot('client-delete-confirmation');
+  await tab.click('[data-client-action="confirm-delete"]');
+  await tab.until(
+    'location.pathname === "/clientes" && document.body.innerText.includes("foi excluído permanentemente") && document.body.innerText.includes("Cadastre seu primeiro cliente")',
+  );
+  const settledClientRequests = clientRequests;
+  await delay(500);
+  assert.equal(clientRequests, settledClientRequests);
+  assert(clientRequests - clientsStart < 30);
+  console.log('PASS: confirmação acessível, exclusão permanente e nenhuma chamada em loop.');
+
   await tab.viewport(390);
   await tab.click('.mobile-menu-trigger');
-  await tab.until('document.querySelector("dialog").open');
+  await tab.until('document.querySelector("#mobile-navigation").open');
   assert.equal(
     await tab.evaluate('document.activeElement.getAttribute("aria-label")'),
     'Fechar menu de navegação',
@@ -299,7 +437,7 @@ try {
     code: 'Escape',
     windowsVirtualKeyCode: 27,
   });
-  await tab.until('!document.querySelector("dialog").open');
+  await tab.until('!document.querySelector("#mobile-navigation").open');
   await tab.send('Input.dispatchKeyEvent', {
     type: 'keyDown',
     key: 'Tab',

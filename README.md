@@ -3,20 +3,22 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 3 — Autenticação
+## Estado atual: Etapa 4 — Clientes
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
-- Prisma com `User`, `AuthSession` e migration aplicada ao PostgreSQL.
+- Prisma com `User`, `AuthSession`, `Client` e migrations aplicadas ao PostgreSQL.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
 - Cadastro, login, logout, restauração e rotação de sessão integrados à API real.
-- Rotas visuais privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
+- CRUD real de clientes com busca, arquivamento, restauração e isolamento por usuário.
+- Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-CRUD de negócio, Kanban, gráficos, portal do cliente e CI/CD não fazem parte desta
-entrega. As páginas internas continuam sendo os placeholders aprovados da Etapa 2.
-Consulte o [relatório da Etapa 3](docs/etapa-3-autenticacao.md) para decisões,
-arquivos, revisão de segurança e resultados de validação.
+Projetos, tarefas, Kanban, horas, financeiro, dashboard funcional, portal do cliente
+e CI/CD não fazem parte desta entrega. Essas áreas continuam com os placeholders
+aprovados da Etapa 2. Consulte os relatórios da
+[Etapa 3](docs/etapa-3-autenticacao.md) e da
+[Etapa 4](docs/etapa-4-clientes.md) para decisões e resultados de validação.
 
 ## Pré-requisitos
 
@@ -148,8 +150,9 @@ npm run db:validate
 npm run db:generate
 ```
 
-O schema define o provider PostgreSQL, `User` e `AuthSession`. A migration
-`20260915024133_stage3_authentication` cria as tabelas, índices e relação. O
+O schema define o provider PostgreSQL, `User`, `AuthSession` e `Client`. As migrations
+`20260915024133_stage3_authentication` e `20260915032455_stage4_clients` criam as
+tabelas, índices e relações. O
 Prisma está fixado na versão 7.10.0, com o adaptador PostgreSQL da mesma
 versão. O client gerado fica em `backend/src/generated/prisma/`, ignorado pelo Git,
 e é incluído na compilação do backend.
@@ -217,10 +220,11 @@ DevFlow/
 ├── frontend/
 │   ├── public/           # Favicon local
 │   ├── src/
-│   │   ├── components/   # Navegação e componentes usados pela base visual
+│   │   ├── clients/      # API, schemas e formatação do domínio de clientes
+│   │   ├── components/   # Navegação, autenticação e componentes de clientes
 │   │   ├── layouts/      # Estrutura autenticada responsiva
 │   │   ├── auth/         # Estado de sessão, cliente HTTP e proteção de rotas
-│   │   ├── pages/        # Login, cadastro, placeholders e página não encontrada
+│   │   ├── pages/        # Login, cadastro, clientes, placeholders e 404
 │   │   ├── routes/       # Definição das rotas e metadados da navegação
 │   │   ├── styles/       # Tokens centralizados do design system
 │   │   ├── App.tsx
@@ -230,14 +234,14 @@ DevFlow/
 │   ├── vite.config.ts    # React, Tailwind e proxy local
 │   └── tsconfig.json
 ├── backend/
-│   ├── prisma/           # Schema e migration de autenticação
+│   ├── prisma/           # Schema e migrations de autenticação e clientes
 │   ├── src/
 │   │   ├── config/       # Ambiente e client Prisma
-│   │   ├── controllers/  # Respostas HTTP, autenticação e cookies
+│   │   ├── controllers/  # Respostas HTTP de autenticação e clientes
 │   │   ├── middlewares/  # Autenticação, origem/CSRF e erros
-│   │   ├── routes/       # Health check e autenticação
+│   │   ├── routes/       # Health check, autenticação e clientes
 │   │   ├── scripts/      # Diagnóstico de conexão
-│   │   ├── services/     # Diagnóstico, credenciais e sessões
+│   │   ├── services/     # Diagnóstico, sessões e domínio de clientes
 │   │   ├── tests/        # Testes HTTP com PostgreSQL real
 │   │   ├── validators/   # Schemas de entrada Zod
 │   │   ├── app.ts        # Composição do Express
@@ -256,15 +260,16 @@ DevFlow/
 Pastas e componentes são criados conforme necessidades reais. A configuração
 compartilhada ativa TypeScript estrito; o backend usa módulos ESM com resolução
 NodeNext, e o frontend usa a resolução do bundler Vite. Dependências de autenticação
-e formulários foram adicionadas na Etapa 3; gráficos e Kanban continuam fora do escopo.
+e formulários foram adicionadas na Etapa 3. TanStack Query gerencia o estado remoto
+de clientes. Gráficos e Kanban continuam fora do escopo.
 
 ## Base visual
 
-As rotas abaixo usam o mesmo layout e exibem conteúdo temporário:
+As rotas abaixo usam o mesmo layout. `/clientes` e `/clientes/:clientId` são
+funcionais; as demais áreas ainda exibem conteúdo temporário:
 
 - `/dashboard`
 - `/projetos`
-- `/clientes`
 - `/tarefas`
 - `/financeiro`
 - `/horas`
@@ -285,6 +290,35 @@ um botão de 44 px abre a navegação em um diálogo modal nativo, que gerencia 
 teclado e fechamento com Escape. O conteúdo usa gutters fluidos e não depende de
 larguras fixas. As transições são desativadas quando o sistema solicita movimento
 reduzido.
+
+## Clientes e testes da Etapa 4
+
+| Endpoint                                  | Comportamento                                 |
+| ----------------------------------------- | --------------------------------------------- |
+| `GET /api/v1/clients`                     | Lista ativos; aceita `status` e busca com `q` |
+| `POST /api/v1/clients`                    | Cadastra para o usuário autenticado           |
+| `GET /api/v1/clients/:clientId`           | Retorna detalhe pertencente ao usuário        |
+| `PATCH /api/v1/clients/:clientId`         | Atualiza os dados editáveis                   |
+| `PATCH /api/v1/clients/:clientId/archive` | Define `archivedAt`                           |
+| `PATCH /api/v1/clients/:clientId/restore` | Limpa `archivedAt`                            |
+| `DELETE /api/v1/clients/:clientId`        | Exclui permanentemente                        |
+
+Todas as operações exigem sessão e combinam `clientId` com o `userId` autenticado.
+A API rejeita ownership enviado pelo frontend e responde `404` para acesso cruzado.
+A busca case-insensitive cobre nome, email e empresa dentro do usuário e do estado
+selecionado. A ordenação usa nome e ID.
+
+O frontend usa TanStack Query para cache, mutations e invalidação. As chaves incluem
+o usuário autenticado, impedindo reaproveitamento de dados entre contas. O CRUD
+atualiza a interface sem reload manual.
+
+```sh
+npm run test:clients
+```
+
+A suíte cria dois usuários e comprova isolamento em listagem, busca, detalhe,
+edição, arquivamento, restauração e exclusão. Os registros temporários são removidos
+ao final. `npm run test:auth:browser` também percorre o CRUD completo no Chrome.
 
 ## Autenticação e testes da Etapa 3
 

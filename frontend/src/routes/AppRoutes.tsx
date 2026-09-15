@@ -6,6 +6,8 @@ import { navigationItems } from './navigation';
 import { AuthGuard } from '../auth/AuthGuard';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
+import { ClientsPage } from '../pages/ClientsPage';
+import { ClientDetailPage } from '../pages/ClientDetailPage';
 
 export function AppRoutes() {
   return (
@@ -17,20 +19,24 @@ export function AppRoutes() {
       <Route element={<AuthGuard />}>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          {navigationItems.map((item) => (
-            <Route
-              key={item.path}
-              path={item.path}
-              element={
-                <PlaceholderPage
-                  title={item.label}
-                  description={item.description}
-                  placeholder={item.placeholder}
-                  icon={item.icon}
-                />
-              }
-            />
-          ))}
+          <Route path="/clientes" element={<ClientsPage />} />
+          <Route path="/clientes/:clientId" element={<ClientDetailPage />} />
+          {navigationItems
+            .filter((item) => item.path !== '/clientes')
+            .map((item) => (
+              <Route
+                key={item.path}
+                path={item.path}
+                element={
+                  <PlaceholderPage
+                    title={item.label}
+                    description={item.description}
+                    placeholder={item.placeholder}
+                    icon={item.icon}
+                  />
+                }
+              />
+            ))}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

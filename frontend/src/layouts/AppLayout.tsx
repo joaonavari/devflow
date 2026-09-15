@@ -13,7 +13,9 @@ export function AppLayout() {
   const previousPath = useRef(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
   const normalizedPath = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
-  const currentPage = navigationItems.find((item) => item.path === normalizedPath);
+  const currentPage = navigationItems.find(
+    (item) => item.path === normalizedPath || normalizedPath.startsWith(`${item.path}/`),
+  );
   const pageTitle = currentPage?.label ?? 'Página não encontrada';
 
   function openMenu() {
