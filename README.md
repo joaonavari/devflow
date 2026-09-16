@@ -3,26 +3,36 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 6 — Tasks & Kanban
+## Estado atual: Etapa 9 — Dashboard
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
-- Prisma com `User`, `AuthSession`, `Client`, `Project`, `Task` e migrations aplicadas ao PostgreSQL.
+- Prisma com `User`, `AuthSession`, `Client`, `Project`, `Task`, `TimeEntry` e `Payment`, com migrations versionadas para PostgreSQL.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
 - Cadastro, login, logout, restauração e rotação de sessão integrados à API real.
 - CRUD real de clientes com busca, arquivamento, restauração e isolamento por usuário.
 - CRUD real de projetos com busca, filtros, progresso, orçamento e isolamento por usuário.
 - Tasks reais, visão global, Kanban por projeto e progresso automático opcional.
+- Registros de horas por projeto, com visão global, filtros e totais calculados.
+- Cobranças por projeto, com pagamento, reabertura, vencimentos e totais financeiros.
+- Dashboard integrado com projetos, tarefas, horas, financeiro e atividades recentes.
 - Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-Horas, financeiro, dashboard funcional, portal do cliente e CI/CD não fazem parte
-desta entrega. Essas áreas continuam com os placeholders aprovados da Etapa 2.
-Consulte os relatórios da
-[Etapa 3](docs/etapa-3-autenticacao.md) e da
-[Etapa 4](docs/etapa-4-clientes.md), além do relatório da
-[Etapa 5](docs/etapa-5-projetos.md) e da
-[Etapa 6](docs/etapa-6-tasks-kanban.md), para decisões e resultados de validação.
+A página de configurações ainda exibe conteúdo temporário. Portal do cliente e
+CI/CD não fazem parte da entrega atual.
+
+Consulte os relatórios de cada etapa para detalhes de escopo, decisões e validações:
+
+| Etapa | Relatório                                      |
+| ----- | ---------------------------------------------- |
+| 3     | [Autenticação](docs/etapa-3-autenticacao.md)   |
+| 4     | [Clientes](docs/etapa-4-clientes.md)           |
+| 5     | [Projetos](docs/etapa-5-projetos.md)           |
+| 6     | [Tasks & Kanban](docs/etapa-6-tasks-kanban.md) |
+| 7     | [Registros de horas](docs/etapa-7-horas.md)    |
+| 8     | [Financeiro](docs/etapa-8-financeiro.md)       |
+| 9     | [Dashboard](docs/etapa-9-dashboard.md)         |
 
 ## Pré-requisitos
 
@@ -154,13 +164,20 @@ npm run db:validate
 npm run db:generate
 ```
 
-O schema define o provider PostgreSQL, `User`, `AuthSession`, `Client`, `Project` e
-`Task`.
-As migrations `20260915024133_stage3_authentication`,
-`20260915032455_stage4_clients`, `20260915174001_stage5_projects` e
-`20260915181540_stage6_tasks_kanban` criam as tabelas, índices, constraints e
-relações. O
-Prisma está fixado na versão 7.10.0, com o adaptador PostgreSQL da mesma
+O schema define o provider PostgreSQL e os modelos `User`, `AuthSession`, `Client`,
+`Project`, `Task`, `TimeEntry` e `Payment`. As migrations versionadas são:
+
+- `20260915024133_stage3_authentication`
+- `20260915032455_stage4_clients`
+- `20260915174001_stage5_projects`
+- `20260915181540_stage6_tasks_kanban`
+- `20260915213228_stage7_time_entries`
+- `20260916034805_stage8_payments`
+
+Elas criam as tabelas, índices, constraints e relações. O dashboard da Etapa 9
+consulta os dados existentes e não exige novas tabelas ou migrations.
+
+O Prisma está fixado na versão 7.10.0, com o adaptador PostgreSQL da mesma
 versão. O client gerado fica em `backend/src/generated/prisma/`, ignorado pelo Git,
 e é incluído na compilação do backend.
 
@@ -181,7 +198,7 @@ Para aplicar migrations já versionadas em um ambiente de publicação futuro:
 npm run db:migrate:deploy
 ```
 
-Esta etapa utiliza uma migration real. Não usa `db push`, seed nem tabelas
+O projeto utiliza migrations reais. Não usa `db push`, seed nem tabelas
 antecipadas de funcionalidades de negócio.
 
 ## Verificações e build
@@ -201,6 +218,19 @@ npm run typecheck
 npm run format:check
 npm run format
 npm run build
+```
+
+Os testes de integração são executados separadamente, com PostgreSQL disponível
+e todas as migrations aplicadas:
+
+```sh
+npm run test:auth
+npm run test:clients
+npm run test:projects
+npm run test:tasks
+npm run test:time-entries
+npm run test:payments
+npm run test:dashboard
 ```
 
 Após o build:
@@ -229,12 +259,16 @@ DevFlow/
 │   ├── src/
 │   │   ├── clients/      # API, schemas e formatação do domínio de clientes
 │   │   ├── projects/     # API, schemas e formatação do domínio de projetos
+│   │   ├── tasks/        # API, schemas e formatação de tarefas
+│   │   ├── time-entries/ # API, schemas e formatação de registros de horas
+│   │   ├── payments/     # API, schemas e formatação de cobranças
+│   │   ├── dashboard/    # Cliente da API e contrato do dashboard
 │   │   ├── components/   # Navegação, autenticação e componentes de domínio
 │   │   ├── layouts/      # Estrutura autenticada responsiva
 │   │   ├── auth/         # Estado de sessão, cliente HTTP e proteção de rotas
-│   │   ├── pages/        # Login, cadastro, clientes, projetos, placeholders e 404
+│   │   ├── pages/        # Autenticação, domínios, dashboard, placeholder e 404
 │   │   ├── routes/       # Definição das rotas e metadados da navegação
-│   │   ├── styles/       # Tokens centralizados do design system
+│   │   ├── styles/       # Tokens do design system e estilos por domínio
 │   │   ├── App.tsx
 │   │   ├── main.tsx
 │   │   └── styles.css
@@ -247,7 +281,7 @@ DevFlow/
 │   │   ├── config/       # Ambiente e client Prisma
 │   │   ├── controllers/  # Respostas HTTP dos domínios
 │   │   ├── middlewares/  # Autenticação, origem/CSRF e erros
-│   │   ├── routes/       # Health check, autenticação, clientes e projetos
+│   │   ├── routes/       # Health check, autenticação, domínios e dashboard
 │   │   ├── scripts/      # Diagnóstico de conexão
 │   │   ├── services/     # Diagnóstico, sessões e domínios de negócio
 │   │   ├── tests/        # Testes HTTP com PostgreSQL real
@@ -258,6 +292,8 @@ DevFlow/
 │   ├── tsconfig.json
 │   └── tsconfig.build.json
 ├── compose.yaml
+├── docs/                # Relatórios das etapas 3 a 9
+├── scripts/             # Verificação integrada no navegador
 ├── .env.example
 ├── eslint.config.mjs
 ├── tsconfig.base.json
@@ -269,19 +305,24 @@ Pastas e componentes são criados conforme necessidades reais. A configuração
 compartilhada ativa TypeScript estrito; o backend usa módulos ESM com resolução
 NodeNext, e o frontend usa a resolução do bundler Vite. Dependências de autenticação
 e formulários foram adicionadas na Etapa 3. TanStack Query gerencia o estado remoto
-de clientes e projetos. Gráficos e Kanban continuam fora do escopo.
+de clientes, projetos, tarefas, horas, cobranças e dashboard. O Kanban usa dnd-kit;
+o dashboard apresenta barras de progresso e distribuição de horas sem biblioteca
+externa de gráficos. As páginas principais usam `React.lazy` e `Suspense` para
+carregamento sob demanda.
 
 ## Base visual
 
-As rotas abaixo usam o mesmo layout. `/clientes`, `/clientes/:clientId`, `/projetos`
-e `/projetos/:projectId` são funcionais; as áreas abaixo ainda exibem conteúdo
-temporário:
+As rotas privadas compartilham o mesmo layout:
 
-- `/dashboard`
-- `/tarefas`
-- `/financeiro`
-- `/horas`
-- `/configuracoes`
+| Rota                                 | Conteúdo                                      |
+| ------------------------------------ | --------------------------------------------- |
+| `/dashboard`                         | Visão consolidada com filtros de período      |
+| `/clientes` e `/clientes/:clientId`  | Gestão e detalhe de clientes                  |
+| `/projetos` e `/projetos/:projectId` | Gestão de projetos, Kanban, horas e cobranças |
+| `/tarefas`                           | Busca e filtros globais de tarefas            |
+| `/financeiro`                        | Gestão de cobranças e totais financeiros      |
+| `/horas`                             | Registros de horas e totais por período       |
+| `/configuracoes`                     | Conteúdo temporário                           |
 
 A raiz redireciona para `/dashboard`. Visitantes são encaminhados para `/login`;
 o login retorna à rota privada solicitada. `/login` e `/register` redirecionam
@@ -420,6 +461,63 @@ npm run test:time-entries
 
 A suíte usa PostgreSQL real e dois usuários para cobrir CRUD, datas, duração,
 totais, filtros, isolamento e o comportamento de projetos arquivados.
+
+## Financeiro da Etapa 8
+
+| Endpoint                                    | Comportamento                            |
+| ------------------------------------------- | ---------------------------------------- |
+| `GET /api/v1/projects/:projectId/payments`  | Lista cobranças e totais do projeto      |
+| `POST /api/v1/projects/:projectId/payments` | Cria cobrança em projeto ativo próprio   |
+| `GET /api/v1/payments`                      | Visão global com busca, filtros e totais |
+| `GET /api/v1/payments/:paymentId`           | Retorna uma cobrança pertencente         |
+| `PATCH /api/v1/payments/:paymentId`         | Edita os dados da cobrança               |
+| `PATCH /api/v1/payments/:paymentId/pay`     | Marca como paga e preenche `paidAt`      |
+| `PATCH /api/v1/payments/:paymentId/reopen`  | Reabre como pendente e limpa `paidAt`    |
+| `DELETE /api/v1/payments/:paymentId`        | Exclui permanentemente uma cobrança      |
+
+`Payment` pertence a um projeto e usa `Decimal(12,2)` para valores, transmitidos
+como strings decimais na API. A interface apresenta BRL. `dueDate` usa PostgreSQL
+`DATE`; `paidAt` registra o instante do pagamento. Apenas `PENDING` e `PAID` são
+persistidos: o atraso é derivado do vencimento e do dia atual no fuso do usuário.
+
+`/financeiro` oferece busca e filtros por projeto, cliente, status, atraso e
+intervalo de vencimento, além dos totais previsto, pago, pendente e vencido.
+O detalhe do projeto também permite gerenciar cobranças. Projetos arquivados
+mantêm a leitura e bloqueiam mutações até serem restaurados. O domínio registra
+cobranças previstas; não integra gateway, emissão fiscal ou conciliação bancária.
+
+```sh
+npm run test:payments
+```
+
+A suíte cobre precisão decimal, validação, filtros, pagamento, reabertura,
+totais, isolamento entre usuários e bloqueio de mutações em projetos arquivados.
+
+## Dashboard da Etapa 9
+
+`GET /api/v1/dashboard?period=TODAY|7D|30D` retorna o resumo de projetos, tarefas,
+horas e financeiro do usuário autenticado, além de atividades recentes.
+O período padrão é `30D`; os limites de datas seguem o fuso do usuário.
+
+O período filtra horas registradas, tarefas concluídas e pagamentos recebidos.
+Projetos ativos, tarefas abertas e valores pendentes ou vencidos representam o
+estado atual. Projetos arquivados ficam fora da carga de trabalho de projetos e
+tarefas; horas históricas e valores financeiros continuam considerados.
+
+O dashboard é uma camada de leitura sobre os domínios existentes, sem persistir
+métricas ou eventos. A atividade recente é derivada dos timestamps existentes
+e não constitui um histórico de auditoria. As consultas aplicam isolamento por
+usuário, agregações no banco e limites nas listas.
+
+`/dashboard` usa uma query TanStack Query por usuário e período, sem polling,
+com nova consulta ao retornar à página após alterações em outros domínios.
+
+```sh
+npm run test:dashboard
+```
+
+A suíte cobre autenticação, conta vazia, períodos, agregações de tarefas, horas e
+financeiro, limites das listas e isolamento entre usuários.
 
 ## Autenticação e testes da Etapa 3
 
