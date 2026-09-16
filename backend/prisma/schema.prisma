@@ -36,6 +36,11 @@ enum TaskStatus {
   DONE
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
 model User {
   id           String        @id @default(uuid()) @db.Uuid
   name         String        @db.VarChar(100)
@@ -98,6 +103,7 @@ model Project {
   client      Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   tasks       Task[]
   timeEntries TimeEntry[]
+  payments    Payment[]
 
   @@index([userId, archivedAt, status, name, id])
   @@index([userId, clientId, archivedAt])
@@ -133,4 +139,20 @@ model TimeEntry {
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, workDate, createdAt, id])
+}
+
+model Payment {
+  id          String        @id @default(uuid()) @db.Uuid
+  projectId   String        @db.Uuid
+  description String        @db.VarChar(300)
+  amount      Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(PENDING)
+  dueDate     DateTime      @db.Date
+  paidAt      DateTime?     @db.Timestamptz(3)
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, dueDate, createdAt, id])
+  @@index([projectId, status, dueDate])
 }

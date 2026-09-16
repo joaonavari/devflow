@@ -5,6 +5,7 @@ import { ClientError } from '../services/client-error.js';
 import { ProjectError } from '../services/project-error.js';
 import { TaskError } from '../services/task-error.js';
 import { TimeEntryError } from '../services/time-entry-error.js';
+import { PaymentError } from '../services/payment-error.js';
 
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
   if (response.headersSent) {
@@ -18,7 +19,8 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
     error instanceof ClientError ||
     error instanceof ProjectError ||
     error instanceof TaskError ||
-    error instanceof TimeEntryError
+    error instanceof TimeEntryError ||
+    error instanceof PaymentError
   ) {
     response.status(error.status).json({ error: { code: error.code, message: error.message } });
     return;

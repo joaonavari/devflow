@@ -12,6 +12,7 @@ import { ProjectDetailPage } from '../pages/ProjectDetailPage';
 import { ProjectsPage } from '../pages/ProjectsPage';
 import { TasksPage } from '../pages/TasksPage';
 import { HoursPage } from '../pages/HoursPage';
+import { FinancePage } from '../pages/FinancePage';
 
 export function AppRoutes() {
   return (
@@ -29,8 +30,14 @@ export function AppRoutes() {
           <Route path="/projetos/:projectId" element={<ProjectDetailPage />} />
           <Route path="/tarefas" element={<TasksPage />} />
           <Route path="/horas" element={<HoursPage />} />
+          <Route path="/financeiro" element={<FinancePage />} />
           {navigationItems
-            .filter((item) => !['/clientes', '/projetos', '/tarefas', '/horas'].includes(item.path))
+            .filter(
+              (item) =>
+                !['/clientes', '/projetos', '/tarefas', '/horas', '/financeiro'].includes(
+                  item.path,
+                ),
+            )
             .map((item) => (
               <Route
                 key={item.path}

@@ -9,6 +9,8 @@ import { DeleteProjectDialog } from '../components/projects/DeleteProjectDialog'
 import { ProjectEditForm } from '../components/projects/ProjectEditForm';
 import { ProjectKanban } from '../components/tasks/ProjectKanban';
 import { ProjectTimeEntries } from '../components/time-entries/ProjectTimeEntries';
+import { ProjectPayments } from '../components/payments/ProjectPayments';
+import { paymentKeys } from '../payments/payment-api';
 import {
   changeProjectArchive,
   deleteProject,
@@ -57,6 +59,7 @@ export function ProjectDetailPage() {
       const updated = await archiveMutation.mutateAsync({ id: project.id, action });
       queryClient.setQueryData(projectKeys.detail(userId, project.id), updated);
       await queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: paymentKeys.all(userId) });
       setNotice(
         action === 'archive' ? 'Projeto arquivado com sucesso.' : 'Projeto restaurado com sucesso.',
       );
@@ -74,6 +77,7 @@ export function ProjectDetailPage() {
     try {
       await deleteMutation.mutateAsync(project.id);
       await queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: paymentKeys.all(userId) });
       queryClient.removeQueries({ queryKey: projectKeys.detail(userId, project.id) });
       await navigate('/projetos', {
         replace: true,
@@ -221,6 +225,8 @@ export function ProjectDetailPage() {
       />
 
       <ProjectTimeEntries project={project} />
+
+      <ProjectPayments project={project} />
 
       <div className="project-detail-grid">
         <section className="detail-section" aria-labelledby="project-data-title">

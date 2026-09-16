@@ -15,7 +15,21 @@ let clientRequests = 0;
 let projectRequests = 0;
 let taskRequests = 0;
 let timeEntryRequests = 0;
+let paymentRequests = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function dateInTimeZone(offsetDays = 0) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const part = (type) => parts.find((candidate) => candidate.type === type)?.value ?? '';
+  const date = new Date(`${part('year')}-${part('month')}-${part('day')}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+}
 
 async function connect(url) {
   const socket = new WebSocket(url);
@@ -63,6 +77,11 @@ async function connect(url) {
       message.params.request.url.includes('/time-entries')
     )
       timeEntryRequests++;
+    if (
+      message.method === 'Network.requestWillBeSent' &&
+      message.params.request.url.includes('/payments')
+    )
+      paymentRequests++;
   });
   return (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -961,6 +980,133 @@ try {
     'PASS: Horas registra 1h30 + 45min, soma 2h15, edita, persiste, filtra, integra ao projeto e exclui atualizando o total.',
   );
 
+  await tab.navigate('/financeiro');
+  await tab.until(
+    '!document.querySelector("[data-payment-action=new]").disabled && document.body.innerText.includes("Nenhuma cobrança registrada")',
+  );
+  await tab.click('[data-payment-action="new"]');
+  await tab.until(
+    'document.querySelector(".payment-dialog").open && document.activeElement.name === "description"',
+  );
+  await tab.send('Input.dispatchKeyEvent', {
+    type: 'rawKeyDown',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await tab.send('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await tab.until('!document.querySelector(".payment-dialog")');
+
+  const createBrowserPayment = async (description, amount, dueDate) => {
+    await tab.click('[data-payment-action="new"]');
+    await tab.until('document.querySelector(".payment-dialog").open');
+    await tab.setValue('.payment-dialog [name="projectId"]', globalProjectId);
+    await tab.fillSelector('.payment-dialog [name="description"]', description);
+    await tab.fillSelector('.payment-dialog [name="amount"]', amount);
+    await tab.setValue('.payment-dialog [name="dueDate"]', dueDate);
+    await tab.click('[data-payment-action="save"]');
+    await tab.until(
+      `!document.querySelector(".payment-dialog") && document.body.innerText.includes(${JSON.stringify(description)})`,
+    );
+  };
+  await createBrowserPayment('Entrada do projeto', '1000', dateInTimeZone(1));
+  await createBrowserPayment('Parcela vencida', '500,00', dateInTimeZone(-1));
+  await tab.until(
+    'document.querySelector("[data-finance-total=expected]").textContent.includes("1.500,00") && document.querySelector("[data-finance-total=pending]").textContent.includes("1.500,00") && document.querySelector("[data-finance-total=overdue]").textContent.includes("500,00")',
+  );
+
+  await tab.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.finance-table tbody tr')]
+      .find((candidate) => candidate.textContent.includes('Entrada do projeto'));
+    row.querySelector('.payment-row-actions button')?.click();
+  })()`);
+  await tab.until(
+    'document.querySelector("[data-finance-total=paid]").textContent.includes("1.000,00") && document.querySelector("[data-finance-total=pending]").textContent.includes("500,00")',
+  );
+  await tab.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.finance-table tbody tr')]
+      .find((candidate) => candidate.textContent.includes('Entrada do projeto'));
+    row.querySelector('.payment-row-actions button')?.click();
+  })()`);
+  await tab.until(
+    'document.querySelector("[data-finance-total=paid]").textContent.includes("0,00") && document.querySelector("[data-finance-total=pending]").textContent.includes("1.500,00")',
+  );
+  await tab.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.finance-table tbody tr')]
+      .find((candidate) => candidate.textContent.includes('Parcela vencida'));
+    row.querySelector('button[aria-label^="Editar"]')?.click();
+  })()`);
+  await tab.until('document.querySelector(".payment-dialog").open');
+  assert.equal(
+    await tab.evaluate('!!document.querySelector(".payment-dialog [name=projectId][type=hidden]")'),
+    true,
+  );
+  await tab.fillSelector('.payment-dialog [name="amount"]', '600,00');
+  await tab.click('[data-payment-action="save"]');
+  await tab.until(
+    '!document.querySelector(".payment-dialog") && document.querySelector("[data-finance-total=expected]").textContent.includes("1.600,00")',
+  );
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("[data-finance-total=expected]").textContent.includes("1.600,00") && document.body.innerText.includes("Parcela vencida")',
+  );
+  await tab.setValue('[data-payment-filter="status"]', 'OVERDUE');
+  await tab.setValue('[data-payment-filter="project"]', globalProjectId);
+  const financeClientId = await tab.evaluate(
+    `document.querySelector('[data-payment-filter="client"] option:not([value=""])').value`,
+  );
+  await tab.setValue('[data-payment-filter="client"]', financeClientId);
+  await tab.fillSelector('#finance-search', 'Parcela vencida');
+  await tab.until(
+    'document.querySelectorAll(".finance-table tbody tr").length === 1 && document.querySelector("[data-finance-total=overdue]").textContent.includes("600,00")',
+  );
+  await tab.viewport(390);
+  await tab.until('document.querySelectorAll(".finance-mobile-list li").length === 1');
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.screenshot('finance-global-mobile');
+  await tab.viewport(320);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.viewport(1440);
+  await tab.navigate(projectPath);
+  await tab.until(
+    'document.querySelector("[data-project-payment-total=expected]").textContent.includes("1.600,00") && document.querySelectorAll(".project-payment-list li").length === 2',
+  );
+  await tab.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.project-payment-list li')]
+      .find((candidate) => candidate.textContent.includes('Parcela vencida'));
+    row.querySelector('button[aria-label^="Excluir"]')?.click();
+  })()`);
+  await tab.until('!!document.querySelector(".confirm-dialog[open]")');
+  assert.equal(await tab.evaluate('document.activeElement.textContent.trim()'), 'Cancelar');
+  await tab.click('[data-payment-action="confirm-delete"]');
+  await tab.until(
+    '!document.querySelector(".confirm-dialog[open]") && document.querySelector("[data-project-payment-total=expected]").textContent.includes("1.000,00") && document.querySelectorAll(".project-payment-list li").length === 1',
+  );
+  const remainingPaymentId = await tab.evaluate(
+    'document.querySelector(".project-payment-list li").dataset.paymentId',
+  );
+  const settledPaymentRequests = paymentRequests;
+  await delay(500);
+  assert.equal(paymentRequests, settledPaymentRequests);
+  console.log(
+    'PASS: Financeiro soma 1000 + 500, paga/reabre, edita com decimal BRL, persiste, filtra, identifica vencido e atualiza totais após excluir.',
+  );
+
   await tab.navigate(clientPath);
   await tab.until('!!document.querySelector("[data-client-action=delete]")');
   await tab.click('[data-client-action="delete"]');
@@ -990,6 +1136,9 @@ try {
   await tab.until(
     'document.body.innerText.includes("Restaure o projeto para alterar os registros de horas.") && !!document.querySelector(".project-time-list li") && !document.querySelector("[data-time-action=new-project-entry]")',
   );
+  await tab.until(
+    'document.body.innerText.includes("Restaure o projeto para alterar suas cobranças.") && !!document.querySelector(".project-payment-list li") && !document.querySelector("[data-payment-action=new-project-payment]")',
+  );
   assert.equal(
     await tab.evaluate(
       `Promise.all([
@@ -999,6 +1148,23 @@ try {
           updateTimeEntry(${JSON.stringify(remainingTimeEntryId)}, { projectId: ${JSON.stringify(globalProjectId)}, workDate: '2026-09-15', hours: 2, minutes: 1, description: 'Bloqueado' }).then(() => false, (error) => error.status === 409)),
         import('/src/time-entries/time-entry-api.ts').then(({ deleteTimeEntry }) =>
           deleteTimeEntry(${JSON.stringify(remainingTimeEntryId)}).then(() => false, (error) => error.status === 409)),
+      ]).then((results) => results.every(Boolean))`,
+    ),
+    true,
+  );
+  assert.equal(
+    await tab.evaluate(
+      `Promise.all([
+        import('/src/payments/payment-api.ts').then(({ createPayment }) =>
+          createPayment({ projectId: ${JSON.stringify(globalProjectId)}, description: 'Bloqueada', amount: '10,00', dueDate: ${JSON.stringify(dateInTimeZone())} }).then(() => false, (error) => error.status === 409)),
+        import('/src/payments/payment-api.ts').then(({ updatePayment }) =>
+          updatePayment(${JSON.stringify(remainingPaymentId)}, { projectId: ${JSON.stringify(globalProjectId)}, description: 'Bloqueada', amount: '10,00', dueDate: ${JSON.stringify(dateInTimeZone())} }).then(() => false, (error) => error.status === 409)),
+        import('/src/payments/payment-api.ts').then(({ changePaymentStatus }) =>
+          changePaymentStatus(${JSON.stringify(remainingPaymentId)}, 'pay').then(() => false, (error) => error.status === 409)),
+        import('/src/payments/payment-api.ts').then(({ changePaymentStatus }) =>
+          changePaymentStatus(${JSON.stringify(remainingPaymentId)}, 'reopen').then(() => false, (error) => error.status === 409)),
+        import('/src/payments/payment-api.ts').then(({ deletePayment }) =>
+          deletePayment(${JSON.stringify(remainingPaymentId)}).then(() => false, (error) => error.status === 409)),
       ]).then((results) => results.every(Boolean))`,
     ),
     true,
@@ -1023,8 +1189,14 @@ try {
   await tab.until(
     '!document.querySelector(".time-entry-dialog") && document.querySelector(".project-time-section [data-time-total]").textContent === "2h 15min"',
   );
+  await tab.evaluate(
+    'document.querySelector(".project-payment-list .payment-row-actions button")?.click()',
+  );
+  await tab.until(
+    'document.querySelector("[data-project-payment-total=paid]").textContent.includes("1.000,00")',
+  );
   console.log(
-    'PASS: projeto arquivado mantém horas visíveis, bloqueia create/update/delete e restauração reativa operações.',
+    'PASS: projeto arquivado mantém horas e financeiro visíveis, bloqueia mutações e restauração reativa operações.',
   );
 
   await tab.click('[data-project-action="delete"]');
