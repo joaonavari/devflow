@@ -394,6 +394,33 @@ npm run test:tasks
 A suíte cobre operações, posições, progresso e isolamento entre usuários por meio
 da relação `Task → Project → User`.
 
+## Registros de horas da Etapa 7
+
+| Endpoint                                        | Comportamento                             |
+| ----------------------------------------------- | ----------------------------------------- |
+| `GET /api/v1/projects/:projectId/time-entries`  | Lista e soma as horas do projeto          |
+| `POST /api/v1/projects/:projectId/time-entries` | Registra minutos em projeto ativo próprio |
+| `GET /api/v1/time-entries`                      | Visão global com busca, período e filtros |
+| `GET /api/v1/time-entries/:timeEntryId`         | Retorna um registro pertencente           |
+| `PATCH /api/v1/time-entries/:timeEntryId`       | Edita data, duração e descrição           |
+| `DELETE /api/v1/time-entries/:timeEntryId`      | Exclui permanentemente um registro        |
+
+`TimeEntry` guarda somente `durationMinutes` inteiro e `workDate` como PostgreSQL
+`DATE`. Totais são derivados com `SUM(durationMinutes)` e nunca persistidos no
+projeto. Ownership segue `TimeEntry → Project → User`; projeto arquivado mantém a
+leitura e bloqueia mutações até ser restaurado.
+
+`/horas` oferece total geral, total filtrado, busca, filtros e criação para
+projetos ativos. O detalhe do projeto mostra o total e os registros recentes. O
+formulário recebe horas e minutos separados e converte para minutos antes da API.
+
+```sh
+npm run test:time-entries
+```
+
+A suíte usa PostgreSQL real e dois usuários para cobrir CRUD, datas, duração,
+totais, filtros, isolamento e o comportamento de projetos arquivados.
+
 ## Autenticação e testes da Etapa 3
 
 | Endpoint                     | Resultado                                               |

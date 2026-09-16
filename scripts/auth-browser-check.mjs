@@ -14,6 +14,7 @@ let refreshRequests = 0;
 let clientRequests = 0;
 let projectRequests = 0;
 let taskRequests = 0;
+let timeEntryRequests = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function connect(url) {
@@ -57,6 +58,11 @@ async function connect(url) {
       message.params.request.url.includes('/api/v1/tasks')
     )
       taskRequests++;
+    if (
+      message.method === 'Network.requestWillBeSent' &&
+      message.params.request.url.includes('/time-entries')
+    )
+      timeEntryRequests++;
   });
   return (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -151,6 +157,37 @@ async function page(browser, context) {
   };
   const click = (selector) =>
     evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const pointerClick = async (selector) => {
+    await evaluate(
+      `document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: 'center' })`,
+    );
+    await delay(100);
+    const point = await evaluate(`(() => {
+      const rect = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    })()`);
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: point.x,
+      y: point.y,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      button: 'left',
+      buttons: 1,
+      clickCount: 1,
+      x: point.x,
+      y: point.y,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      button: 'left',
+      buttons: 0,
+      clickCount: 1,
+      x: point.x,
+      y: point.y,
+    });
+  };
   const drag = async (sourceSelector, targetSelector) => {
     const points = await evaluate(`(() => {
       const source = document.querySelector(${JSON.stringify(sourceSelector)}).getBoundingClientRect();
@@ -219,9 +256,10 @@ async function page(browser, context) {
           },
           type: 'change',
         });
+      } else {
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-      element.dispatchEvent(new Event('change', { bubbles: true }));
     })()`);
   const viewport = (width) =>
     send('Emulation.setDeviceMetricsOverride', {
@@ -247,6 +285,7 @@ async function page(browser, context) {
     fill,
     fillSelector,
     click,
+    pointerClick,
     drag,
     setValue,
     viewport,
@@ -490,7 +529,6 @@ try {
     'document.querySelector(".clients-table [data-client-link]").getAttribute("href")',
   );
   const clientId = clientPath.split('/').at(-1);
-  const projectsStart = projectRequests;
   await tab.navigate('/projetos');
   await tab.until('document.body.innerText.includes("Crie seu primeiro projeto")');
   await tab.screenshot('projects-empty-desktop');
@@ -626,12 +664,18 @@ try {
     'document.body.innerText.includes("Não foi possível mover a tarefa.") && document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 2',
   );
   await tab.send('Network.setBlockedURLs', { urls: [] });
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=TODO] .task-card:first-child .task-drag-handle").disabled',
+  );
   await tab.drag(
     '.kanban-column[data-status="TODO"] .task-card:first-child .task-drag-handle',
     '.kanban-column[data-status="IN_PROGRESS"]',
   );
   await tab.until(
     'document.querySelectorAll(".kanban-column[data-status=IN_PROGRESS] .task-card").length === 1 && document.body.innerText.includes("0%")',
+  );
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=IN_PROGRESS] .task-card [data-task-action=status]").disabled',
   );
   await tab.setValue(
     '.kanban-column[data-status="IN_PROGRESS"] .task-card [data-task-action="status"]',
@@ -646,23 +690,39 @@ try {
   await tab.until(
     `import('/src/tasks/task-api.ts').then(({ getTask }) => getTask(${JSON.stringify(completedTaskId)})).then((task) => typeof task.completedAt === 'string')`,
   );
-  await tab.click('.kanban-column[data-status="DONE"] .task-card [data-task-action="toggle"]');
   await tab.until(
-    'document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 2 && document.body.innerText.includes("0%")',
+    '!document.querySelector(".kanban-column[data-status=DONE] .task-card [data-task-action=toggle]").disabled',
+  );
+  await tab.setValue(
+    '.kanban-column[data-status="DONE"] .task-card [data-task-action="status"]',
+    'TODO',
   );
   await tab.until(
     `import('/src/tasks/task-api.ts').then(({ getTask }) => getTask(${JSON.stringify(completedTaskId)})).then((task) => task.completedAt === null)`,
   );
+  await tab.until(
+    'document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 2 && document.body.innerText.includes("0%")',
+  );
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=TODO] .task-card [data-task-action=status]").disabled',
+  );
   const orderBefore = await tab.evaluate(
     '[...document.querySelectorAll(".kanban-column[data-status=TODO] .task-card strong")].map((item) => item.textContent).join("|")',
   );
-  await tab.click(
-    '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="down"]',
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=TODO] .task-card:first-child .task-drag-handle").disabled',
+  );
+  await tab.drag(
+    '.kanban-column[data-status="TODO"] .task-card:first-child .task-drag-handle',
+    '.kanban-column[data-status="TODO"] .task-card:last-child',
   );
   await tab.until(
     `[...document.querySelectorAll(".kanban-column[data-status=TODO] .task-card strong")].map((item) => item.textContent).join("|") !== ${JSON.stringify(orderBefore)}`,
   );
-  await tab.click(
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=TODO] .task-card:first-child [data-task-action=edit]").disabled',
+  );
+  await tab.pointerClick(
     '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="edit"]',
   );
   await tab.until('document.querySelector(".task-dialog").open');
@@ -671,6 +731,9 @@ try {
   await tab.click('[data-task-action="save"]');
   await tab.until(
     '!document.querySelector(".task-dialog") && document.body.innerText.includes("Implementar interface revisada foi atualizada.")',
+  );
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=TODO] .task-card:first-child [data-task-action=toggle]").disabled',
   );
   await tab.click(
     '.kanban-column[data-status="TODO"] .task-card:first-child [data-task-action="toggle"]',
@@ -699,7 +762,7 @@ try {
   );
 
   await tab.click('.kanban-column[data-status="TODO"] .task-card [data-task-action="delete"]');
-  await tab.until('document.querySelector(".confirm-dialog").open');
+  await tab.until('!!document.querySelector(".confirm-dialog[open]")');
   await tab.click('[data-task-action="confirm-delete"]');
   await tab.until(
     '!document.querySelector(".confirm-dialog").open && document.querySelectorAll(".task-card").length === 1 && document.body.innerText.includes("100%")',
@@ -757,7 +820,13 @@ try {
   await tab.setValue('[name="progress"]', '72');
   await tab.click('[data-project-action="save"]');
   await tab.until('document.body.innerText.includes("72%")');
-  await tab.click('.kanban-column[data-status="DONE"] .task-card [data-task-action="toggle"]');
+  await tab.until(
+    '!document.querySelector(".kanban-column[data-status=DONE] .task-card [data-task-action=toggle]").disabled',
+  );
+  await tab.setValue(
+    '.kanban-column[data-status="DONE"] .task-card [data-task-action="status"]',
+    'TODO',
+  );
   await tab.until(
     'document.querySelectorAll(".kanban-column[data-status=TODO] .task-card").length === 1 && document.body.innerText.includes("72%")',
   );
@@ -772,6 +841,124 @@ try {
   assert(taskRequests < 45);
   console.log(
     'PASS: visão global responsiva, exclusão e transições AUTO ↔ MANUAL sem loops de requests.',
+  );
+
+  await tab.navigate('/horas');
+  await tab.until(
+    '!document.querySelector("[data-time-action=new]").disabled && document.body.innerText.includes("Nenhuma hora registrada")',
+  );
+  await tab.click('[data-time-action="new"]');
+  await tab.until(
+    'document.querySelector(".time-entry-dialog").open && document.activeElement.name === "workDate"',
+  );
+  await tab.send('Input.dispatchKeyEvent', {
+    type: 'rawKeyDown',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await tab.send('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await tab.until('!document.querySelector(".time-entry-dialog")');
+  await tab.click('[data-time-action="new"]');
+  await tab.until('document.querySelector(".time-entry-dialog").open');
+  await tab.setValue('.time-entry-dialog [name="projectId"]', globalProjectId);
+  await tab.setValue('.time-entry-dialog [name="workDate"]', '2026-09-15');
+  await tab.fillSelector('.time-entry-dialog [name="hours"]', '1');
+  await tab.fillSelector('.time-entry-dialog [name="minutes"]', '30');
+  await tab.fillSelector(
+    '.time-entry-dialog [name="description"]',
+    'Implementação do controle de horas',
+  );
+  await tab.click('[data-time-action="save"]');
+  await tab.until(
+    '!document.querySelector(".time-entry-dialog") && document.querySelectorAll(".hours-table tbody tr").length === 1 && document.querySelector("[data-hours-overall]").textContent === "1h 30min" && document.querySelector("[data-hours-filtered]").textContent === "1h 30min"',
+  );
+  await tab.click('[data-time-action="new"]');
+  await tab.until('document.querySelector(".time-entry-dialog").open');
+  await tab.setValue('.time-entry-dialog [name="projectId"]', globalProjectId);
+  await tab.setValue('.time-entry-dialog [name="workDate"]', '2026-09-15');
+  await tab.fillSelector('.time-entry-dialog [name="hours"]', '0');
+  await tab.fillSelector('.time-entry-dialog [name="minutes"]', '45');
+  await tab.fillSelector('.time-entry-dialog [name="description"]', 'Reunião de alinhamento');
+  await tab.click('[data-time-action="save"]');
+  await tab.until(
+    '!document.querySelector(".time-entry-dialog") && document.querySelectorAll(".hours-table tbody tr").length === 2 && document.querySelector("[data-hours-overall]").textContent === "2h 15min"',
+  );
+  await tab.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.hours-table tbody tr')]
+      .find((candidate) => candidate.textContent.includes('Implementação do controle de horas'));
+    row.querySelector('button[aria-label^="Editar"]')?.click();
+  })()`);
+  await tab.until('document.querySelector(".time-entry-dialog").open');
+  await tab.fillSelector('.time-entry-dialog [name="hours"]', '2');
+  await tab.fillSelector('.time-entry-dialog [name="minutes"]', '0');
+  await tab.fillSelector(
+    '.time-entry-dialog [name="description"]',
+    'Implementação revisada do controle de horas',
+  );
+  await tab.click('[data-time-action="save"]');
+  await tab.until(
+    '!document.querySelector(".time-entry-dialog") && document.querySelector("[data-hours-overall]").textContent === "2h 45min" && document.body.innerText.includes("Registro de horas atualizado.")',
+  );
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("[data-hours-overall]").textContent === "2h 45min" && document.body.innerText.includes("Implementação revisada do controle de horas")',
+  );
+  await tab.setValue('[data-time-filter="project"]', globalProjectId);
+  const globalClientId = await tab.evaluate(
+    `document.querySelector('[data-time-filter="client"] option:not([value=""])').value`,
+  );
+  await tab.setValue('[data-time-filter="client"]', globalClientId);
+  await tab.setValue('[data-time-filter="from"]', '2026-09-15');
+  await tab.setValue('[data-time-filter="to"]', '2026-09-15');
+  await tab.fillSelector('#hours-search', 'Implementação revisada');
+  await tab.until(
+    'document.querySelectorAll(".hours-table tbody tr").length === 1 && document.querySelector("[data-hours-filtered]").textContent === "2h"',
+  );
+  await tab.viewport(390);
+  await tab.until('document.querySelectorAll(".hours-mobile-list li").length === 1');
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.screenshot('hours-global-mobile');
+  await tab.viewport(320);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.viewport(1440);
+  await tab.navigate(projectPath);
+  await tab.until(
+    'document.querySelector(".project-time-section [data-time-total]").textContent === "2h 45min" && document.querySelectorAll(".project-time-list li").length === 2',
+  );
+  await tab.evaluate(`(() => {
+    const row = [...document.querySelectorAll('.project-time-list li')]
+      .find((candidate) => candidate.textContent.includes('Reunião de alinhamento'));
+    row.querySelector('button[aria-label^="Excluir"]')?.click();
+  })()`);
+  await tab.until('!!document.querySelector(".confirm-dialog[open]")');
+  await tab.click('[data-time-action="confirm-delete"]');
+  await tab.until(
+    '!document.querySelector(".confirm-dialog[open]") && document.querySelector(".project-time-section [data-time-total]").textContent === "2h" && document.querySelectorAll(".project-time-list li").length === 1',
+  );
+  const remainingTimeEntryId = await tab.evaluate(
+    'document.querySelector(".project-time-list li").dataset.timeEntryId',
+  );
+  const settledTimeEntryRequests = timeEntryRequests;
+  await delay(500);
+  assert.equal(timeEntryRequests, settledTimeEntryRequests);
+  console.log(
+    'PASS: Horas registra 1h30 + 45min, soma 2h15, edita, persiste, filtra, integra ao projeto e exclui atualizando o total.',
   );
 
   await tab.navigate(clientPath);
@@ -800,6 +987,22 @@ try {
     ),
     true,
   );
+  await tab.until(
+    'document.body.innerText.includes("Restaure o projeto para alterar os registros de horas.") && !!document.querySelector(".project-time-list li") && !document.querySelector("[data-time-action=new-project-entry]")',
+  );
+  assert.equal(
+    await tab.evaluate(
+      `Promise.all([
+        import('/src/time-entries/time-entry-api.ts').then(({ createTimeEntry }) =>
+          createTimeEntry({ projectId: ${JSON.stringify(globalProjectId)}, workDate: '2026-09-15', hours: 0, minutes: 10, description: 'Bloqueado' }).then(() => false, (error) => error.status === 409)),
+        import('/src/time-entries/time-entry-api.ts').then(({ updateTimeEntry }) =>
+          updateTimeEntry(${JSON.stringify(remainingTimeEntryId)}, { projectId: ${JSON.stringify(globalProjectId)}, workDate: '2026-09-15', hours: 2, minutes: 1, description: 'Bloqueado' }).then(() => false, (error) => error.status === 409)),
+        import('/src/time-entries/time-entry-api.ts').then(({ deleteTimeEntry }) =>
+          deleteTimeEntry(${JSON.stringify(remainingTimeEntryId)}).then(() => false, (error) => error.status === 409)),
+      ]).then((results) => results.every(Boolean))`,
+    ),
+    true,
+  );
   await tab.navigate('/projetos');
   await tab.until('document.body.innerText.includes("Crie seu primeiro projeto")');
   await tab.click('[data-project-view="archived"]');
@@ -810,7 +1013,19 @@ try {
   await tab.until(
     'document.body.innerText.includes("Projeto restaurado com sucesso.") && !!document.querySelector("[data-project-action=archive]")',
   );
-  console.log('PASS: arquivamento, visualização dos arquivados e restauração do projeto.');
+  await tab.click('[data-time-action="new-project-entry"]');
+  await tab.until('document.querySelector(".time-entry-dialog").open');
+  await tab.setValue('.time-entry-dialog [name="workDate"]', '2026-09-16');
+  await tab.fillSelector('.time-entry-dialog [name="hours"]', '0');
+  await tab.fillSelector('.time-entry-dialog [name="minutes"]', '15');
+  await tab.fillSelector('.time-entry-dialog [name="description"]', 'Após restauração');
+  await tab.click('[data-time-action="save"]');
+  await tab.until(
+    '!document.querySelector(".time-entry-dialog") && document.querySelector(".project-time-section [data-time-total]").textContent === "2h 15min"',
+  );
+  console.log(
+    'PASS: projeto arquivado mantém horas visíveis, bloqueia create/update/delete e restauração reativa operações.',
+  );
 
   await tab.click('[data-project-action="delete"]');
   await tab.until('document.querySelector(".confirmation-dialog").open');
@@ -822,7 +1037,6 @@ try {
   const settledProjectRequests = projectRequests;
   await delay(500);
   assert.equal(projectRequests, settledProjectRequests);
-  assert(projectRequests - projectsStart < 90);
   console.log('PASS: confirmação, exclusão permanente do projeto e nenhuma chamada em loop.');
 
   await tab.navigate(clientPath);

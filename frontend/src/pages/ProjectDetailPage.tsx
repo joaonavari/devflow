@@ -8,6 +8,7 @@ import { EmptyState } from '../components/EmptyState';
 import { DeleteProjectDialog } from '../components/projects/DeleteProjectDialog';
 import { ProjectEditForm } from '../components/projects/ProjectEditForm';
 import { ProjectKanban } from '../components/tasks/ProjectKanban';
+import { ProjectTimeEntries } from '../components/time-entries/ProjectTimeEntries';
 import {
   changeProjectArchive,
   deleteProject,
@@ -218,6 +219,8 @@ export function ProjectDetailPage() {
         archived={Boolean(project.archivedAt)}
         onTasksChanged={() => void query.refetch()}
       />
+
+      <ProjectTimeEntries project={project} />
 
       <div className="project-detail-grid">
         <section className="detail-section" aria-labelledby="project-data-title">

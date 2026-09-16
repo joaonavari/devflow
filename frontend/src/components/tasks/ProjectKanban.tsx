@@ -79,6 +79,7 @@ function KanbanColumn({
   status,
   tasks,
   archived,
+  busy,
   onEdit,
   onDelete,
   onMove,
@@ -86,11 +87,15 @@ function KanbanColumn({
   status: TaskStatus;
   tasks: Task[];
   archived: boolean;
+  busy: boolean;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onMove: (task: Task, status: TaskStatus, position: number) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `column:${status}`, disabled: archived });
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column:${status}`,
+    disabled: archived || busy,
+  });
   return (
     <section
       ref={setNodeRef}
@@ -110,6 +115,7 @@ function KanbanColumn({
               key={task.id}
               task={task}
               archived={archived}
+              busy={busy}
               first={index === 0}
               last={index === tasks.length - 1}
               onEdit={onEdit}
@@ -127,6 +133,7 @@ function KanbanColumn({
 function TaskCard({
   task,
   archived,
+  busy,
   first,
   last,
   onEdit,
@@ -135,6 +142,7 @@ function TaskCard({
 }: {
   task: Task;
   archived: boolean;
+  busy: boolean;
   first: boolean;
   last: boolean;
   onEdit: (task: Task) => void;
@@ -143,7 +151,7 @@ function TaskCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
-    disabled: archived,
+    disabled: archived || busy,
   });
   return (
     <article
@@ -157,7 +165,7 @@ function TaskCard({
         <button
           className="task-drag-handle"
           type="button"
-          disabled={archived}
+          disabled={archived || busy}
           aria-label={`Arrastar ${task.title}`}
           {...attributes}
           {...listeners}
@@ -170,6 +178,7 @@ function TaskCard({
             <button
               type="button"
               data-task-action="edit"
+              disabled={busy}
               aria-label={`Editar ${task.title}`}
               onClick={() => {
                 onEdit(task);
@@ -180,6 +189,7 @@ function TaskCard({
             <button
               type="button"
               data-task-action="delete"
+              disabled={busy}
               aria-label={`Excluir ${task.title}`}
               onClick={() => {
                 onDelete(task);
@@ -203,6 +213,7 @@ function TaskCard({
               aria-label={`Alterar status de ${task.title}`}
               data-task-action="status"
               value={task.status}
+              disabled={busy}
               onChange={(event) => {
                 onMove(task, event.target.value as TaskStatus, 99999);
               }}
@@ -216,7 +227,7 @@ function TaskCard({
           </label>
           <button
             type="button"
-            disabled={first}
+            disabled={busy || first}
             aria-label={`Mover ${task.title} para cima`}
             data-task-action="up"
             onClick={() => {
@@ -227,7 +238,7 @@ function TaskCard({
           </button>
           <button
             type="button"
-            disabled={last}
+            disabled={busy || last}
             aria-label={`Mover ${task.title} para baixo`}
             data-task-action="down"
             onClick={() => {
@@ -239,6 +250,7 @@ function TaskCard({
           <button
             type="button"
             data-task-action="toggle"
+            disabled={busy}
             aria-label={task.status === 'DONE' ? `Reabrir ${task.title}` : `Concluir ${task.title}`}
             onClick={() => {
               onMove(task, task.status === 'DONE' ? 'TODO' : 'DONE', 99999);
@@ -452,6 +464,7 @@ export function ProjectKanban({ projectId, archived, onTasksChanged }: ProjectKa
                   .filter((task) => task.status === status)
                   .sort((a, b) => a.position - b.position)}
                 archived={archived}
+                busy={moveMutation.isPending}
                 onEdit={(task) => {
                   setEditing(task);
                   setDialogOpen(true);

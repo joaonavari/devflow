@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as controller from '../controllers/project.controller.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import * as taskController from '../controllers/task.controller.js';
+import * as timeEntryController from '../controllers/time-entry.controller.js';
 
 export const projectRouter = Router();
 projectRouter.use((_request, response, next) => {
@@ -11,6 +12,8 @@ projectRouter.use((_request, response, next) => {
 projectRouter.use(authenticate);
 projectRouter.get('/:projectId/tasks', taskController.listProject);
 projectRouter.post('/:projectId/tasks', taskController.create);
+projectRouter.get('/:projectId/time-entries', timeEntryController.listProject);
+projectRouter.post('/:projectId/time-entries', timeEntryController.create);
 projectRouter.get('/', controller.list);
 projectRouter.post('/', controller.create);
 projectRouter.get('/:projectId', controller.detail);

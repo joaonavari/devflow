@@ -7,6 +7,7 @@ import { healthRouter } from './routes/health.routes.js';
 import { clientRouter } from './routes/client.routes.js';
 import { projectRouter } from './routes/project.routes.js';
 import { taskRouter } from './routes/task.routes.js';
+import { timeEntryRouter } from './routes/time-entry.routes.js';
 
 export const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/clients', clientRouter);
 app.use('/api/v1/projects', projectRouter);
 app.use('/api/v1/tasks', taskRouter);
+app.use('/api/v1/time-entries', timeEntryRouter);
 app.use('/api/v1/health', healthRouter);
 
 app.use((_request, response) => {
