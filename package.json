@@ -17,6 +17,7 @@
     "test:tasks": "npm run test:tasks --workspace @devflow/backend",
     "test:time-entries": "npm run test:time-entries --workspace @devflow/backend",
     "test:payments": "npm run test:payments --workspace @devflow/backend",
+    "test:dashboard": "npm run test:dashboard --workspace @devflow/backend",
     "test:auth:browser": "node --import tsx scripts/auth-browser-check.mjs",
     "dev": "concurrently --kill-others --names api,web --prefix-colors blue,cyan \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "npm run dev --workspace @devflow/frontend",

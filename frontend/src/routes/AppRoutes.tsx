@@ -1,60 +1,99 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
-import { NotFoundPage } from '../pages/NotFoundPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { navigationItems } from './navigation';
 import { AuthGuard } from '../auth/AuthGuard';
-import { LoginPage } from '../pages/LoginPage';
-import { RegisterPage } from '../pages/RegisterPage';
-import { ClientsPage } from '../pages/ClientsPage';
-import { ClientDetailPage } from '../pages/ClientDetailPage';
-import { ProjectDetailPage } from '../pages/ProjectDetailPage';
-import { ProjectsPage } from '../pages/ProjectsPage';
-import { TasksPage } from '../pages/TasksPage';
-import { HoursPage } from '../pages/HoursPage';
-import { FinancePage } from '../pages/FinancePage';
+
+const LoginPage = lazy(() =>
+  import('../pages/LoginPage').then((module) => ({ default: module.LoginPage })),
+);
+const RegisterPage = lazy(() =>
+  import('../pages/RegisterPage').then((module) => ({ default: module.RegisterPage })),
+);
+const ClientsPage = lazy(() =>
+  import('../pages/ClientsPage').then((module) => ({ default: module.ClientsPage })),
+);
+const ClientDetailPage = lazy(() =>
+  import('../pages/ClientDetailPage').then((module) => ({ default: module.ClientDetailPage })),
+);
+const ProjectsPage = lazy(() =>
+  import('../pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })),
+);
+const ProjectDetailPage = lazy(() =>
+  import('../pages/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })),
+);
+const TasksPage = lazy(() =>
+  import('../pages/TasksPage').then((module) => ({ default: module.TasksPage })),
+);
+const HoursPage = lazy(() =>
+  import('../pages/HoursPage').then((module) => ({ default: module.HoursPage })),
+);
+const FinancePage = lazy(() =>
+  import('../pages/FinancePage').then((module) => ({ default: module.FinancePage })),
+);
+const DashboardPage = lazy(() =>
+  import('../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })),
+);
+const NotFoundPage = lazy(() =>
+  import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
+);
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route element={<AuthGuard guest />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-      </Route>
-      <Route element={<AuthGuard />}>
-        <Route element={<AppLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="/clientes" element={<ClientsPage />} />
-          <Route path="/clientes/:clientId" element={<ClientDetailPage />} />
-          <Route path="/projetos" element={<ProjectsPage />} />
-          <Route path="/projetos/:projectId" element={<ProjectDetailPage />} />
-          <Route path="/tarefas" element={<TasksPage />} />
-          <Route path="/horas" element={<HoursPage />} />
-          <Route path="/financeiro" element={<FinancePage />} />
-          {navigationItems
-            .filter(
-              (item) =>
-                !['/clientes', '/projetos', '/tarefas', '/horas', '/financeiro'].includes(
-                  item.path,
-                ),
-            )
-            .map((item) => (
-              <Route
-                key={item.path}
-                path={item.path}
-                element={
-                  <PlaceholderPage
-                    title={item.label}
-                    description={item.description}
-                    placeholder={item.placeholder}
-                    icon={item.icon}
-                  />
-                }
-              />
-            ))}
-          <Route path="*" element={<NotFoundPage />} />
+    <Suspense
+      fallback={
+        <div className="route-loading" role="status">
+          Carregando página…
+        </div>
+      }
+    >
+      <Routes>
+        <Route element={<AuthGuard guest />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Route>
-      </Route>
-    </Routes>
+        <Route element={<AuthGuard />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/clientes" element={<ClientsPage />} />
+            <Route path="/clientes/:clientId" element={<ClientDetailPage />} />
+            <Route path="/projetos" element={<ProjectsPage />} />
+            <Route path="/projetos/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/tarefas" element={<TasksPage />} />
+            <Route path="/horas" element={<HoursPage />} />
+            <Route path="/financeiro" element={<FinancePage />} />
+            {navigationItems
+              .filter(
+                (item) =>
+                  ![
+                    '/dashboard',
+                    '/clientes',
+                    '/projetos',
+                    '/tarefas',
+                    '/horas',
+                    '/financeiro',
+                  ].includes(item.path),
+              )
+              .map((item) => (
+                <Route
+                  key={item.path}
+                  path={item.path}
+                  element={
+                    <PlaceholderPage
+                      title={item.label}
+                      description={item.description}
+                      placeholder={item.placeholder}
+                      icon={item.icon}
+                    />
+                  }
+                />
+              ))}
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }

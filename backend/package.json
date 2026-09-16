@@ -10,6 +10,7 @@
     "test:tasks": "npm run db:generate && node --import tsx --test src/tests/task.test.ts",
     "test:time-entries": "npm run db:generate && node --import tsx --test src/tests/time-entry.test.ts",
     "test:payments": "npm run db:generate && node --import tsx --test src/tests/payment.test.ts",
+    "test:dashboard": "npm run db:generate && node --import tsx --test src/tests/dashboard.test.ts",
     "dev": "tsx watch src/server.ts",
     "predev": "npm run db:generate",
     "build": "npm run db:generate && tsc --project tsconfig.build.json",

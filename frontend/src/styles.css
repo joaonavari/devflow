@@ -6,6 +6,7 @@
 @import './styles/tasks.css';
 @import './styles/time-entries.css';
 @import './styles/payments.css';
+@import './styles/dashboard.css';
 
 @layer base {
   :root {

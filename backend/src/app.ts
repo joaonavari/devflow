@@ -9,6 +9,7 @@ import { projectRouter } from './routes/project.routes.js';
 import { taskRouter } from './routes/task.routes.js';
 import { timeEntryRouter } from './routes/time-entry.routes.js';
 import { paymentRouter } from './routes/payment.routes.js';
+import { dashboardRouter } from './routes/dashboard.routes.js';
 
 export const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/v1/projects', projectRouter);
 app.use('/api/v1/tasks', taskRouter);
 app.use('/api/v1/time-entries', timeEntryRouter);
 app.use('/api/v1/payments', paymentRouter);
+app.use('/api/v1/dashboard', dashboardRouter);
 app.use('/api/v1/health', healthRouter);
 
 app.use((_request, response) => {

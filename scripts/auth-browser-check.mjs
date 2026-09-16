@@ -16,6 +16,7 @@ let projectRequests = 0;
 let taskRequests = 0;
 let timeEntryRequests = 0;
 let paymentRequests = 0;
+let dashboardRequests = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function dateInTimeZone(offsetDays = 0) {
@@ -82,6 +83,11 @@ async function connect(url) {
       message.params.request.url.includes('/payments')
     )
       paymentRequests++;
+    if (
+      message.method === 'Network.requestWillBeSent' &&
+      message.params.request.url.includes('/api/v1/dashboard')
+    )
+      dashboardRequests++;
   });
   return (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -368,6 +374,9 @@ try {
   await tab.fill('confirmPassword', password);
   await tab.click('button[type=submit]');
   await tab.until('location.pathname === "/dashboard" && !!document.querySelector(".app-shell")');
+  await tab.until(
+    'document.body.innerText.includes("Organize seu primeiro projeto") && document.querySelector("[data-dashboard-metric=projects]").textContent.includes("0")',
+  );
   assert.equal(
     await tab.evaluate('document.querySelector(".sidebar-user p").textContent'),
     'Usuário de Validação',
@@ -1107,6 +1116,92 @@ try {
     'PASS: Financeiro soma 1000 + 500, paga/reabre, edita com decimal BRL, persiste, filtra, identifica vencido e atualiza totais após excluir.',
   );
 
+  await tab.navigate('/dashboard');
+  await tab.until(
+    'document.querySelector("[data-dashboard-metric=projects]").textContent.includes("1") && document.querySelector("[data-dashboard-metric=tasks]").textContent.includes("1") && document.querySelector("[data-dashboard-metric=hours]").textContent.includes("2h") && document.querySelector("[data-dashboard-metric=pending]").textContent.includes("1.000,00")',
+  );
+  assert.equal(
+    await tab.evaluate(
+      `!!document.querySelector(${JSON.stringify(`.dashboard-project-list a[href="${projectPath}"]`)}) && !!document.querySelector('.dashboard-shortcuts a[href="/horas"]')`,
+    ),
+    true,
+  );
+  await tab.click('.dashboard-shortcuts a[href="/horas"]');
+  await tab.until('location.pathname === "/horas" && !!document.querySelector("h1")');
+  await tab.navigate('/dashboard');
+  await tab.until('!!document.querySelector("[data-dashboard-task-count=todo]")');
+
+  assert.equal(
+    await tab.evaluate(
+      `import('/src/tasks/task-api.ts').then(({ moveTask }) => moveTask(${JSON.stringify(completedTaskId)}, 'DONE', 0)).then((task) => task.status === 'DONE')`,
+    ),
+    true,
+  );
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("[data-dashboard-metric=tasks]").textContent.includes("0") && document.querySelector("[data-dashboard-task-count=done]").textContent.includes("1")',
+  );
+  assert.equal(
+    await tab.evaluate(
+      `import('/src/time-entries/time-entry-api.ts').then(({ createTimeEntry }) => createTimeEntry({ projectId: ${JSON.stringify(globalProjectId)}, workDate: ${JSON.stringify(dateInTimeZone())}, hours: 0, minutes: 15, description: 'Ajuste pelo Dashboard' })).then((entry) => entry.durationMinutes === 15)`,
+    ),
+    true,
+  );
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("[data-dashboard-metric=hours]").textContent.includes("2h 15min")',
+  );
+  await tab.setValue('[data-dashboard-period]', 'TODAY');
+  await tab.until(
+    'document.querySelector("[data-dashboard-hours-total]").textContent.includes("15min")',
+  );
+  await tab.setValue('[data-dashboard-period]', '30D');
+  await tab.until(
+    'document.querySelector("[data-dashboard-hours-total]").textContent.includes("2h 15min")',
+  );
+  assert.equal(
+    await tab.evaluate(
+      `import('/src/payments/payment-api.ts').then(({ changePaymentStatus }) => changePaymentStatus(${JSON.stringify(remainingPaymentId)}, 'pay')).then((payment) => payment.status === 'PAID' && !!payment.paidAt)`,
+    ),
+    true,
+  );
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("[data-dashboard-metric=pending]").textContent.includes("0,00") && document.querySelector("[data-dashboard-finance=paid]").textContent.includes("1.000,00")',
+  );
+  await tab.viewport(390);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.screenshot('dashboard-populated-mobile');
+  await tab.viewport(320);
+  assert.equal(
+    await tab.evaluate(
+      'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+    ),
+    false,
+  );
+  await tab.viewport(1440);
+  await tab.reload();
+  await tab.until(
+    'document.querySelector("[data-dashboard-finance=paid]").textContent.includes("1.000,00")',
+  );
+  const settledDashboardRequests = dashboardRequests;
+  await delay(500);
+  assert.equal(dashboardRequests, settledDashboardRequests);
+  assert.equal(
+    await tab.evaluate(
+      `import('/src/payments/payment-api.ts').then(({ changePaymentStatus }) => changePaymentStatus(${JSON.stringify(remainingPaymentId)}, 'reopen')).then((payment) => payment.status === 'PENDING' && payment.paidAt === null)`,
+    ),
+    true,
+  );
+  console.log(
+    'PASS: Dashboard vazio e preenchido, período, métricas reativas de Tasks/Horas/Financeiro, links, reload, mobile e ausência de loops.',
+  );
+
   await tab.navigate(clientPath);
   await tab.until('!!document.querySelector("[data-client-action=delete]")');
   await tab.click('[data-client-action="delete"]');
@@ -1187,7 +1282,7 @@ try {
   await tab.fillSelector('.time-entry-dialog [name="description"]', 'Após restauração');
   await tab.click('[data-time-action="save"]');
   await tab.until(
-    '!document.querySelector(".time-entry-dialog") && document.querySelector(".project-time-section [data-time-total]").textContent === "2h 15min"',
+    '!document.querySelector(".time-entry-dialog") && document.querySelector(".project-time-section [data-time-total]").textContent === "2h 30min"',
   );
   await tab.evaluate(
     'document.querySelector(".project-payment-list .payment-row-actions button")?.click()',
