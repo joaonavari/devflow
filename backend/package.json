@@ -20,7 +20,9 @@
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:check": "npm run db:generate && tsx src/scripts/check-db.ts"
+    "db:check": "npm run db:generate && tsx src/scripts/check-db.ts",
+    "test:portal": "npm run db:generate && node --import tsx --test src/tests/portal.test.ts",
+    "test:stages": "npm run db:generate && node --import tsx --test src/tests/project-stage.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

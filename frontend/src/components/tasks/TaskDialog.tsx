@@ -192,7 +192,7 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
           <input id={visibilityId} type="checkbox" {...register('isClientVisible')} />
           <span>
             <strong>Visível para o cliente</strong>
-            <small>Prepara esta tarefa para o futuro portal do cliente.</small>
+            <small>Exibe título, descrição, status, prioridade e prazo no portal do cliente.</small>
           </span>
         </label>
         {errors.root && (

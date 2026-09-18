@@ -1,7 +1,42 @@
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { createLogger, defineConfig, loadEnv, type Plugin } from 'vite';
+
+const portalPrivacyPlugin: Plugin = {
+  name: 'portal-privacy',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (/^\/(?:api\/v1\/)?portal(?:\/|\?|$)/i.test(req.url ?? '')) {
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Referrer-Policy', 'no-referrer');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      }
+      next();
+    });
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (/^\/(?:api\/v1\/)?portal(?:\/|\?|$)/i.test(req.url ?? '')) {
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Referrer-Policy', 'no-referrer');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      }
+      next();
+    });
+  },
+};
+
+// The Vite proxy includes request URLs in errors. Bearer links must be redacted.
+const logger = createLogger();
+for (const method of ['info', 'warn', 'warnOnce', 'error'] as const) {
+  const original = logger[method].bind(logger);
+  logger[method] = (message, options) => {
+    original(message.replace(/(\/(?:api\/v1\/)?portal\/)[^\s"'<>?]+/gi, '$1[redacted]'), options);
+  };
+}
 
 const rootDirectory = fileURLToPath(new URL('..', import.meta.url));
 
@@ -10,9 +45,12 @@ export default defineConfig(({ mode }) => {
   const apiPort = env.API_PORT ?? '3001';
 
   return {
-    plugins: [react(), tailwindcss()],
+    customLogger: logger,
+    plugins: [portalPrivacyPlugin, react(), tailwindcss()],
     envDir: rootDirectory,
+    preview: { headers: { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' } },
     server: {
+      headers: { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' },
       host: '127.0.0.1',
       port: 5173,
       strictPort: true,

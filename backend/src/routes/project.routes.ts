@@ -5,12 +5,19 @@ import * as taskController from '../controllers/task.controller.js';
 import * as timeEntryController from '../controllers/time-entry.controller.js';
 import * as paymentController from '../controllers/payment.controller.js';
 
+import * as portalController from '../controllers/portal.controller.js';
+
 export const projectRouter = Router();
 projectRouter.use((_request, response, next) => {
   response.setHeader('Cache-Control', 'no-store');
   next();
 });
 projectRouter.use(authenticate);
+projectRouter.get('/:projectId/portal', portalController.state);
+projectRouter.post('/:projectId/portal', portalController.generate);
+projectRouter.delete('/:projectId/portal', portalController.revoke);
+projectRouter.get('/:projectId/stages', portalController.listStages);
+projectRouter.post('/:projectId/stages', portalController.createStage);
 projectRouter.get('/:projectId/tasks', taskController.listProject);
 projectRouter.post('/:projectId/tasks', taskController.create);
 projectRouter.get('/:projectId/time-entries', timeEntryController.listProject);

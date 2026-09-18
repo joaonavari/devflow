@@ -40,7 +40,7 @@ function dateToApi(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-function calculatedProgress(total: number, completed: number): number {
+export function calculatedProgress(total: number, completed: number): number {
   return total === 0 ? 0 : Math.round((completed / total) * 100);
 }
 
@@ -191,18 +191,24 @@ export async function updateProject(userId: string, projectId: string, input: Up
 }
 
 export async function archiveProject(userId: string, projectId: string) {
-  const updated = await database.project.updateMany({
-    where: { id: projectId, userId, archivedAt: null },
-    data: { archivedAt: new Date() },
-  });
-  if (updated.count !== 1) {
-    const existing = await database.project.findFirst({
-      where: { id: projectId, userId, archivedAt: { not: null } },
-      select: { id: true },
+  await database.$transaction(async (tx) => {
+    // Updating the row locks it against concurrent portal generation.
+    const updated = await tx.project.updateMany({
+      where: { id: projectId, userId, archivedAt: null },
+      data: { archivedAt: new Date() },
     });
-    if (existing) return getProject(userId, projectId);
-    throw projectNotFound();
-  }
+    if (updated.count !== 1) {
+      const existing = await tx.project.findFirst({
+        where: { id: projectId, userId },
+        select: { id: true },
+      });
+      if (!existing) throw projectNotFound();
+    }
+    await tx.portalLink.updateMany({
+      where: { projectId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  });
   return getProject(userId, projectId);
 }
 

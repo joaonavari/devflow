@@ -10,6 +10,9 @@ import { ProjectEditForm } from '../components/projects/ProjectEditForm';
 import { ProjectKanban } from '../components/tasks/ProjectKanban';
 import { ProjectTimeEntries } from '../components/time-entries/ProjectTimeEntries';
 import { ProjectPayments } from '../components/payments/ProjectPayments';
+import { ProjectPortal } from '../components/portal/ProjectPortal';
+import { ProjectStages } from '../components/portal/ProjectStages';
+import { portalKeys } from '../portal/portal-api';
 import { paymentKeys } from '../payments/payment-api';
 import {
   changeProjectArchive,
@@ -60,10 +63,12 @@ export function ProjectDetailPage() {
       queryClient.setQueryData(projectKeys.detail(userId, project.id), updated);
       await queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) });
       await queryClient.invalidateQueries({ queryKey: paymentKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: portalKeys.state(userId, project.id) });
       setNotice(
         action === 'archive' ? 'Projeto arquivado com sucesso.' : 'Projeto restaurado com sucesso.',
       );
     } catch {
+      await queryClient.invalidateQueries({ queryKey: portalKeys.state(userId, project.id) });
       setNotice(
         action === 'archive'
           ? 'Não foi possível arquivar o projeto.'
@@ -227,6 +232,12 @@ export function ProjectDetailPage() {
       <ProjectTimeEntries project={project} />
 
       <ProjectPayments project={project} />
+
+      <ProjectPortal key={`${project.id}:${project.archivedAt ?? 'active'}`} project={project} />
+      <ProjectStages
+        key={`stages:${project.id}:${project.archivedAt ?? 'active'}`}
+        project={project}
+      />
 
       <div className="project-detail-grid">
         <section className="detail-section" aria-labelledby="project-data-title">

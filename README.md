@@ -3,12 +3,12 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 9 — Dashboard
+## Estado atual: Etapa 10 — Portal do Cliente
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
 - Express com TypeScript, health check e diagnóstico de conexão com PostgreSQL.
-- Prisma com `User`, `AuthSession`, `Client`, `Project`, `Task`, `TimeEntry` e `Payment`, com migrations versionadas para PostgreSQL.
+- Prisma com `User`, `AuthSession`, `Client`, `Project`, `Task`, `TimeEntry`, `Payment`, `PortalLink` e `ProjectStage`, com migrations versionadas para PostgreSQL.
 - ESLint com verificação de tipos, Prettier e scripts compartilhados.
 - Cadastro, login, logout, restauração e rotação de sessão integrados à API real.
 - CRUD real de clientes com busca, arquivamento, restauração e isolamento por usuário.
@@ -17,22 +17,24 @@ horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 - Registros de horas por projeto, com visão global, filtros e totais calculados.
 - Cobranças por projeto, com pagamento, reabertura, vencimentos e totais financeiros.
 - Dashboard integrado com projetos, tarefas, horas, financeiro e atividades recentes.
+- Portal do cliente somente leitura, com link seguro, expiração, revogação e timeline de etapas visíveis.
 - Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-A página de configurações ainda exibe conteúdo temporário. Portal do cliente e
-CI/CD não fazem parte da entrega atual.
+A página de configurações ainda exibe conteúdo temporário. CI/CD não faz parte
+da entrega atual.
 
 Consulte os relatórios de cada etapa para detalhes de escopo, decisões e validações:
 
-| Etapa | Relatório                                      |
-| ----- | ---------------------------------------------- |
-| 3     | [Autenticação](docs/etapa-3-autenticacao.md)   |
-| 4     | [Clientes](docs/etapa-4-clientes.md)           |
-| 5     | [Projetos](docs/etapa-5-projetos.md)           |
-| 6     | [Tasks & Kanban](docs/etapa-6-tasks-kanban.md) |
-| 7     | [Registros de horas](docs/etapa-7-horas.md)    |
-| 8     | [Financeiro](docs/etapa-8-financeiro.md)       |
-| 9     | [Dashboard](docs/etapa-9-dashboard.md)         |
+| Etapa | Relatório                                            |
+| ----- | ---------------------------------------------------- |
+| 3     | [Autenticação](docs/etapa-3-autenticacao.md)         |
+| 4     | [Clientes](docs/etapa-4-clientes.md)                 |
+| 5     | [Projetos](docs/etapa-5-projetos.md)                 |
+| 6     | [Tasks & Kanban](docs/etapa-6-tasks-kanban.md)       |
+| 7     | [Registros de horas](docs/etapa-7-horas.md)          |
+| 8     | [Financeiro](docs/etapa-8-financeiro.md)             |
+| 9     | [Dashboard](docs/etapa-9-dashboard.md)               |
+| 10    | [Portal do Cliente](docs/etapa-10-portal-cliente.md) |
 
 ## Pré-requisitos
 
@@ -165,7 +167,8 @@ npm run db:generate
 ```
 
 O schema define o provider PostgreSQL e os modelos `User`, `AuthSession`, `Client`,
-`Project`, `Task`, `TimeEntry` e `Payment`. As migrations versionadas são:
+`Project`, `Task`, `TimeEntry`, `Payment`, `PortalLink` e `ProjectStage`.
+As migrations versionadas são:
 
 - `20260915024133_stage3_authentication`
 - `20260915032455_stage4_clients`
@@ -173,6 +176,7 @@ O schema define o provider PostgreSQL e os modelos `User`, `AuthSession`, `Clien
 - `20260915181540_stage6_tasks_kanban`
 - `20260915213228_stage7_time_entries`
 - `20260916034805_stage8_payments`
+- `20260917204529_stage10_client_portal`
 
 Elas criam as tabelas, índices, constraints e relações. O dashboard da Etapa 9
 consulta os dados existentes e não exige novas tabelas ou migrations.
@@ -231,6 +235,8 @@ npm run test:tasks
 npm run test:time-entries
 npm run test:payments
 npm run test:dashboard
+npm run test:portal
+npm run test:stages
 ```
 
 Após o build:
@@ -263,6 +269,7 @@ DevFlow/
 │   │   ├── time-entries/ # API, schemas e formatação de registros de horas
 │   │   ├── payments/     # API, schemas e formatação de cobranças
 │   │   ├── dashboard/    # Cliente da API e contrato do dashboard
+│   │   ├── portal/       # APIs separadas do portal público e da administração
 │   │   ├── components/   # Navegação, autenticação e componentes de domínio
 │   │   ├── layouts/      # Estrutura autenticada responsiva
 │   │   ├── auth/         # Estado de sessão, cliente HTTP e proteção de rotas
@@ -292,7 +299,7 @@ DevFlow/
 │   ├── tsconfig.json
 │   └── tsconfig.build.json
 ├── compose.yaml
-├── docs/                # Relatórios das etapas 3 a 9
+├── docs/                # Relatórios das etapas 3 a 10
 ├── scripts/             # Verificação integrada no navegador
 ├── .env.example
 ├── eslint.config.mjs
@@ -323,6 +330,9 @@ As rotas privadas compartilham o mesmo layout:
 | `/financeiro`                        | Gestão de cobranças e totais financeiros      |
 | `/horas`                             | Registros de horas e totais por período       |
 | `/configuracoes`                     | Conteúdo temporário                           |
+
+A rota pública `/portal/:token` usa layout próprio, sem sidebar ou sessão
+administrativa. O acesso depende exclusivamente do token do link.
 
 A raiz redireciona para `/dashboard`. Visitantes são encaminhados para `/login`;
 o login retorna à rota privada solicitada. `/login` e `/register` redirecionam
@@ -518,6 +528,68 @@ npm run test:dashboard
 
 A suíte cobre autenticação, conta vazia, períodos, agregações de tarefas, horas e
 financeiro, limites das listas e isolamento entre usuários.
+
+## Portal do Cliente da Etapa 10
+
+No detalhe do projeto, o proprietário gerencia etapas e gera um link público
+somente leitura. A validade pode ser de 7, 30 (padrão) ou 90 dias. Existe um único
+`PortalLink` por projeto; gerar novamente substitui o hash e invalida o link anterior.
+
+O token usa 32 bytes criptograficamente aleatórios e codificação base64url. Somente
+seu hash SHA-256 é persistido. O link completo aparece apenas após a geração e fica
+em memória enquanto a página está aberta. O GET administrativo retorna apenas
+estado e datas; se o link for perdido, é necessário gerar outro.
+
+| Endpoint                                     | Acesso e comportamento                                 |
+| -------------------------------------------- | ------------------------------------------------------ |
+| `GET /api/v1/projects/:projectId/portal`     | Proprietário: estado e validade                        |
+| `POST /api/v1/projects/:projectId/portal`    | Proprietário: gera ou rotaciona; aceita `validityDays` |
+| `DELETE /api/v1/projects/:projectId/portal`  | Proprietário: revoga imediatamente                     |
+| `GET /api/v1/projects/:projectId/stages`     | Proprietário: lista etapas ordenadas                   |
+| `POST /api/v1/projects/:projectId/stages`    | Proprietário: cria etapa                               |
+| `PATCH /api/v1/project-stages/:stageId`      | Proprietário: título, status e visibilidade            |
+| `PATCH /api/v1/project-stages/:stageId/move` | Proprietário: reordena por `position`                  |
+| `DELETE /api/v1/project-stages/:stageId`     | Proprietário: exclui e normaliza posições              |
+| `GET /api/v1/portal/:token`                  | Público: autoriza exclusivamente pelo token            |
+
+O portal retorna somente nome, descrição, status, progresso oficial e datas do
+projeto, tarefas visíveis e etapas visíveis. Não retorna IDs internos, orçamento,
+financeiro, horas, clientes ou dados do proprietário. Tarefas e etapas começam
+privadas (`isClientVisible = false`). As etapas usam `PENDING`, `IN_PROGRESS` e
+`COMPLETED` e podem ser ordenadas por botões acessíveis.
+
+Tokens inválidos, expirados, revogados e projetos arquivados recebem o mesmo
+`404`. Arquivar revoga o portal na mesma transação; restaurar não reativa o link.
+As etapas de projetos arquivados ficam somente leitura.
+
+A API pública aplica `Cache-Control: no-store`, `Pragma: no-cache`,
+`Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow` e limite de 60
+requisições por minuto por IP. O frontend inclui metas de privacidade no HTML,
+usa fontes do sistema no portal e consulta a API sem cookies. Falhas em novas
+consultas removem o conteúdo público da tela.
+
+Com API, frontend e Chrome CDP em execução, conforme as instruções de navegador
+abaixo:
+
+```sh
+npm run test:portal:browser
+```
+
+Após o build, `npm run test:portal:privacy` verifica os headers/metas do HTML em
+desenvolvimento e preview, o `no-store` em erros do proxy e a ausência do token
+nos logs. O teste inicia servidores temporários em portas livres.
+
+As capturas ficam em `/private/tmp/devflow-stage10` (ajustável por
+`PORTAL_SCREENSHOT_DIR`) e não incluem o link completo. O teste usa contextos
+administrativo e público separados e remove seus dados ao finalizar.
+
+Para publicação futura, o servidor de arquivos estáticos deve reproduzir os
+headers de privacidade de `/portal/*` e a política de referrer dos recursos;
+logs de acesso devem omitir ou mascarar tokens tanto no frontend quanto na API.
+O limiter em memória vale por processo e requer estratégia compartilhada em
+múltiplas instâncias. Não há deploy nesta etapa. Consulte o
+[relatório da Etapa 10](docs/etapa-10-portal-cliente.md) para revisão de segurança,
+contrato público e validações.
 
 ## Autenticação e testes da Etapa 3
 

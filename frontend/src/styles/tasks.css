@@ -42,6 +42,8 @@
   }
 
   .kanban-board {
+    /* Keep absolute screen-reader labels inside the horizontal scroll container. */
+    position: relative;
     display: grid;
     width: 100%;
     min-width: 0;
