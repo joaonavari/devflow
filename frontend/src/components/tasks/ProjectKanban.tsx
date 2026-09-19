@@ -49,7 +49,6 @@ import { TaskDialog } from './TaskDialog';
 interface ProjectKanbanProps {
   projectId: string;
   archived: boolean;
-  onTasksChanged: () => void;
 }
 
 const filters: TaskFilters = { search: '', status: '', priority: '', due: 'all' };
@@ -268,7 +267,7 @@ function TaskCard({
   );
 }
 
-export function ProjectKanban({ projectId, archived, onTasksChanged }: ProjectKanbanProps) {
+export function ProjectKanban({ projectId, archived }: ProjectKanbanProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? '';
@@ -323,7 +322,6 @@ export function ProjectKanban({ projectId, archived, onTasksChanged }: ProjectKa
         queryClient.invalidateQueries({ queryKey: taskKeys.all(userId) }),
         queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) }),
       ]);
-      onTasksChanged();
     },
   });
   const deleteMutation = useMutation({ mutationFn: deleteTask });
@@ -375,7 +373,6 @@ export function ProjectKanban({ projectId, archived, onTasksChanged }: ProjectKa
         queryClient.invalidateQueries({ queryKey: taskKeys.all(userId) }),
         queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) }),
       ]);
-      onTasksChanged();
       setNotice('Tarefa excluída permanentemente.');
     } catch (error) {
       setDeleteError(
@@ -489,7 +486,6 @@ export function ProjectKanban({ projectId, archived, onTasksChanged }: ProjectKa
           }}
           onSaved={(message) => {
             setNotice(message);
-            onTasksChanged();
           }}
         />
       )}

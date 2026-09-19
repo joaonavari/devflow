@@ -1,3 +1,5 @@
+import { captureDialogOpener, restoreDialogFocus, isDialogBackdropClick } from '../ui/dialog-focus';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
@@ -54,6 +56,7 @@ export function ProjectCreateDialog({
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();
@@ -61,6 +64,9 @@ export function ProjectCreateDialog({
     } else if (!open && dialog.open) {
       dialog.close();
     }
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [open]);
 
   function close() {
@@ -70,7 +76,7 @@ export function ProjectCreateDialog({
     onClose();
   }
 
-  async function submit(input: ProjectFormInput) {
+  const submit = useSubmitOnce(async (input: ProjectFormInput) => {
     try {
       const created = await mutation.mutateAsync(input);
       if (user) await queryClient.invalidateQueries({ queryKey: projectKeys.all(user.id) });
@@ -89,19 +95,19 @@ export function ProjectCreateDialog({
         setError('root', { message: 'Não foi possível criar o projeto. Tente novamente.' });
       }
     }
-  }
+  });
 
   return (
     <dialog
       ref={dialogRef}
       className="project-dialog"
       aria-labelledby="create-project-title"
-      onClose={close}
       onCancel={(event) => {
-        if (mutation.isPending) event.preventDefault();
+        event.preventDefault();
+        close();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) close();
+        if (isDialogBackdropClick(event)) close();
       }}
     >
       <div className="dialog-heading">

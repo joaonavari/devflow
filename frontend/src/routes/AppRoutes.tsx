@@ -1,8 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
-import { PlaceholderPage } from '../pages/PlaceholderPage';
-import { navigationItems } from './navigation';
 import { AuthGuard } from '../auth/AuthGuard';
 
 const LoginPage = lazy(() =>
@@ -38,6 +36,9 @@ const DashboardPage = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('../pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
 );
+const SettingsPage = lazy(() =>
+  import('../pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+);
 
 export function AppRoutes() {
   return (
@@ -64,32 +65,7 @@ export function AppRoutes() {
             <Route path="/tarefas" element={<TasksPage />} />
             <Route path="/horas" element={<HoursPage />} />
             <Route path="/financeiro" element={<FinancePage />} />
-            {navigationItems
-              .filter(
-                (item) =>
-                  ![
-                    '/dashboard',
-                    '/clientes',
-                    '/projetos',
-                    '/tarefas',
-                    '/horas',
-                    '/financeiro',
-                  ].includes(item.path),
-              )
-              .map((item) => (
-                <Route
-                  key={item.path}
-                  path={item.path}
-                  element={
-                    <PlaceholderPage
-                      title={item.label}
-                      description={item.description}
-                      placeholder={item.placeholder}
-                      icon={item.icon}
-                    />
-                  }
-                />
-              ))}
+            <Route path="/configuracoes" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

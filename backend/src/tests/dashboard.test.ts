@@ -27,7 +27,7 @@ interface DashboardData {
     pendingAmount: string;
     overdueAmount: string;
   };
-  projects: { id: string; name: string }[];
+  projects: { id: string; name: string; progress: number }[];
   tasks: {
     counts: { todo: number; inProgress: number; doneInPeriod: number };
     attention: { id: string; title: string; dueDate: string; isOverdue: boolean }[];
@@ -353,4 +353,49 @@ void test('dashboard executivo agrega somente dados do usuário autenticado', as
     assert.equal(dataB.summary.overdueAmount, '9999.99');
     assert(!JSON.stringify(dataB).includes('Dashboard A'));
   });
+  await suite.test(
+    'progresso AUTO acompanha tarefas; MANUAL permanece informado e DTO não expõe contagens',
+    async () => {
+      assert.equal(
+        (await call('PATCH', `/projects/${projectAId}`, ownerA.cookie, { progressMode: 'AUTO' }))
+          .status,
+        200,
+      );
+      let result = (await dashboard(ownerA.cookie)).projects.find(
+        (project) => project.id === projectAId,
+      );
+      assert.equal(result?.progress, 13);
+      assert(!JSON.stringify(result).includes('_count'));
+      assert(!JSON.stringify(result).includes('progressMode'));
+      await call('PATCH', `/tasks/${String(overdueTask.id)}`, ownerA.cookie, { status: 'DONE' });
+      result = (await dashboard(ownerA.cookie)).projects.find(
+        (project) => project.id === projectAId,
+      );
+      assert.equal(result?.progress, 25);
+      await call('PATCH', `/projects/${projectAId}`, ownerA.cookie, { progressMode: 'MANUAL' });
+      await call('PATCH', `/projects/${projectAId}`, ownerA.cookie, { progress: 42 });
+      assert.equal(
+        (await dashboard(ownerA.cookie)).projects.find((project) => project.id === projectAId)
+          ?.progress,
+        42,
+      );
+    },
+  );
+  await suite.test(
+    'total de horas inclui projetos fora do top 5 sem incluir outro proprietário',
+    async () => {
+      for (let index = 0; index < 6; index++) {
+        const id = await createProject(ownerA.cookie, clientAId, `Projeto extra ${String(index)}`);
+        await createTimeEntry(ownerA.cookie, id, today(), 10);
+      }
+      const result = await dashboard(ownerA.cookie);
+      assert.equal(result.hours.byProject.length, 5);
+      assert.equal(result.summary.trackedMinutes, 150);
+      assert.equal(result.hours.totalMinutes, 150);
+      assert.equal(
+        result.hours.byProject.reduce((total, item) => total + item.totalMinutes, 0),
+        130,
+      );
+    },
+  );
 });

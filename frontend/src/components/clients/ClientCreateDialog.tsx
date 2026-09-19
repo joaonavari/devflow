@@ -1,3 +1,5 @@
+import { captureDialogOpener, restoreDialogFocus, isDialogBackdropClick } from '../ui/dialog-focus';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
@@ -33,6 +35,7 @@ export function ClientCreateDialog({ open, onClose, onCreated }: ClientCreateDia
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();
@@ -40,6 +43,9 @@ export function ClientCreateDialog({ open, onClose, onCreated }: ClientCreateDia
     } else if (!open && dialog.open) {
       dialog.close();
     }
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [open]);
 
   function close() {
@@ -49,7 +55,7 @@ export function ClientCreateDialog({ open, onClose, onCreated }: ClientCreateDia
     onClose();
   }
 
-  async function submit(input: ClientFormInput) {
+  const submit = useSubmitOnce(async (input: ClientFormInput) => {
     try {
       const created = await mutation.mutateAsync(input);
       if (user) await queryClient.invalidateQueries({ queryKey: clientKeys.all(user.id) });
@@ -68,19 +74,19 @@ export function ClientCreateDialog({ open, onClose, onCreated }: ClientCreateDia
         setError('root', { message: 'Não foi possível criar o cliente. Tente novamente.' });
       }
     }
-  }
+  });
 
   return (
     <dialog
       ref={dialogRef}
       className="client-dialog"
       aria-labelledby="create-client-title"
-      onClose={close}
       onCancel={(event) => {
-        if (mutation.isPending) event.preventDefault();
+        event.preventDefault();
+        close();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) close();
+        if (isDialogBackdropClick(event)) close();
       }}
     >
       <div className="dialog-heading">

@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/auth-context';
 import { clientKeys, listClients } from '../clients/client-api';
 import { EmptyState } from '../components/EmptyState';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { DeleteProjectDialog } from '../components/projects/DeleteProjectDialog';
 import { ProjectEditForm } from '../components/projects/ProjectEditForm';
 import { ProjectKanban } from '../components/tasks/ProjectKanban';
@@ -14,6 +15,8 @@ import { ProjectPortal } from '../components/portal/ProjectPortal';
 import { ProjectStages } from '../components/portal/ProjectStages';
 import { portalKeys } from '../portal/portal-api';
 import { paymentKeys } from '../payments/payment-api';
+import { taskKeys } from '../tasks/task-api';
+import { timeEntryKeys } from '../time-entries/time-entry-api';
 import {
   changeProjectArchive,
   deleteProject,
@@ -36,6 +39,7 @@ export function ProjectDetailPage() {
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const userId = user?.id ?? '';
   const query = useQuery({
@@ -63,6 +67,8 @@ export function ProjectDetailPage() {
       queryClient.setQueryData(projectKeys.detail(userId, project.id), updated);
       await queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) });
       await queryClient.invalidateQueries({ queryKey: paymentKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: taskKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: timeEntryKeys.all(userId) });
       await queryClient.invalidateQueries({ queryKey: portalKeys.state(userId, project.id) });
       setNotice(
         action === 'archive' ? 'Projeto arquivado com sucesso.' : 'Projeto restaurado com sucesso.',
@@ -83,6 +89,8 @@ export function ProjectDetailPage() {
       await deleteMutation.mutateAsync(project.id);
       await queryClient.invalidateQueries({ queryKey: projectKeys.all(userId) });
       await queryClient.invalidateQueries({ queryKey: paymentKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: taskKeys.all(userId) });
+      await queryClient.invalidateQueries({ queryKey: timeEntryKeys.all(userId) });
       queryClient.removeQueries({ queryKey: projectKeys.detail(userId, project.id) });
       await navigate('/projetos', {
         replace: true,
@@ -111,6 +119,7 @@ export function ProjectDetailPage() {
     return (
       <section className="project-not-found">
         <EmptyState
+          headingLevel={1}
           icon={FolderX}
           title="Projeto não encontrado"
           description="O projeto não existe ou não está disponível para sua conta."
@@ -126,6 +135,7 @@ export function ProjectDetailPage() {
     return (
       <section className="project-not-found">
         <EmptyState
+          headingLevel={1}
           icon={FolderX}
           title="Não foi possível carregar o projeto"
           description="Confira sua conexão e tente novamente."
@@ -163,7 +173,10 @@ export function ProjectDetailPage() {
           type="button"
           data-project-action={project.archivedAt ? 'restore' : 'archive'}
           disabled={archiveMutation.isPending}
-          onClick={() => void changeArchive(project)}
+          onClick={() => {
+            if (project.archivedAt) void changeArchive(project);
+            else setArchiveOpen(true);
+          }}
         >
           {project.archivedAt ? (
             <RotateCcw size={17} strokeWidth={1.7} aria-hidden="true" />
@@ -223,11 +236,7 @@ export function ProjectDetailPage() {
         </dl>
       </section>
 
-      <ProjectKanban
-        projectId={project.id}
-        archived={Boolean(project.archivedAt)}
-        onTasksChanged={() => void query.refetch()}
-      />
+      <ProjectKanban projectId={project.id} archived={Boolean(project.archivedAt)} />
 
       <ProjectTimeEntries project={project} />
 
@@ -293,6 +302,20 @@ export function ProjectDetailPage() {
         }}
         onConfirm={() => void remove(project)}
       />
+      {archiveOpen && (
+        <ConfirmDialog
+          title="Arquivar projeto?"
+          description="O projeto sairá da lista de ativos e o portal do cliente será revogado. Restaurar o projeto não reativa o link anterior."
+          confirmLabel="Arquivar projeto"
+          onClose={() => {
+            setArchiveOpen(false);
+          }}
+          onConfirm={() => {
+            setArchiveOpen(false);
+            void changeArchive(project);
+          }}
+        />
+      )}
     </>
   );
 }

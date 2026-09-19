@@ -1,3 +1,4 @@
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -34,7 +35,7 @@ export function ClientEditForm({ client, onSaved }: ClientEditFormProps) {
     mutationFn: (input: ClientFormInput) => updateClient(client.id, input),
   });
 
-  async function submit(input: ClientFormInput) {
+  const submit = useSubmitOnce(async (input: ClientFormInput) => {
     try {
       const updated = await mutation.mutateAsync(input);
       reset({
@@ -60,7 +61,7 @@ export function ClientEditForm({ client, onSaved }: ClientEditFormProps) {
         setError('root', { message: 'Não foi possível salvar as alterações.' });
       }
     }
-  }
+  });
 
   return (
     <form

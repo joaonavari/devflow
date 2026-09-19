@@ -8,6 +8,7 @@ import {
   moveStage,
   portalKeys,
   stageLabels,
+  portalErrorMessage,
   type Stage,
 } from '../../portal/portal-api';
 import type { Project } from '../../projects/project-api';
@@ -163,7 +164,7 @@ export function ProjectStages({ project }: { project: Project }) {
       )}
       {mutation.isError && (
         <p role="alert" className="form-error">
-          {mutation.error.message}
+          {portalErrorMessage(mutation.error)}
         </p>
       )}
       {editing !== undefined && !project.archivedAt && (

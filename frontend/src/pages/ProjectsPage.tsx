@@ -188,7 +188,11 @@ export function ProjectsPage() {
           </label>
         </div>
 
-        {query.isPending && <div className="projects-loading">Carregando projetos…</div>}
+        {query.isPending && (
+          <div className="projects-loading" role="status">
+            Carregando projetos…
+          </div>
+        )}
         {query.isError && (
           <div className="projects-message" role="alert">
             <h3>Não foi possível carregar os projetos</h3>

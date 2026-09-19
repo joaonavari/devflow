@@ -3,7 +3,7 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 10 — Portal do Cliente
+## Estado atual: Etapa 11 — Refinamento
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
@@ -20,8 +20,9 @@ horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 - Portal do cliente somente leitura, com link seguro, expiração, revogação e timeline de etapas visíveis.
 - Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
 
-A página de configurações ainda exibe conteúdo temporário. CI/CD não faz parte
-da entrega atual.
+Configurações mostra dados da conta e fuso horário em modo somente leitura.
+A Etapa 11 refina bundle, Dashboard, cache de sessão, UX, acessibilidade,
+responsividade e privacidade HTTP. CI/CD e deploy não fazem parte da entrega atual.
 
 Consulte os relatórios de cada etapa para detalhes de escopo, decisões e validações:
 
@@ -35,6 +36,7 @@ Consulte os relatórios de cada etapa para detalhes de escopo, decisões e valid
 | 8     | [Financeiro](docs/etapa-8-financeiro.md)             |
 | 9     | [Dashboard](docs/etapa-9-dashboard.md)               |
 | 10    | [Portal do Cliente](docs/etapa-10-portal-cliente.md) |
+| 11    | [Refinamento](docs/etapa-11-refinamento.md)          |
 
 ## Pré-requisitos
 
@@ -676,3 +678,16 @@ operacional do banco depois, execute `npm run db:up` e `npm run db:check`.
 - [Vite: instalação e runtime](https://vite.dev/guide/)
 - [Tailwind CSS com Vite](https://tailwindcss.com/docs/installation/using-vite)
 - [Prisma Client e adaptador PostgreSQL](https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/introduction)
+
+## Verificações de refinamento
+
+Com API, frontend e Chrome/CDP locais ativos, execute `npm run test:refinement:browser`.
+O script verifica dez rotas, reload/deep links, oito larguras entre 320 e 1440 px,
+foco, Escape, envio único e invalidação de caches. `-- --interactions` limita a
+execução aos cenários de interação. Complemente com `test:auth:browser`,
+`test:portal:browser` e `test:portal:privacy`.
+
+O build do frontend seleciona explicitamente React de produção, mesmo quando o
+`.env` compartilhado usa `NODE_ENV=development` para a API local. Ele também
+rejeita a inclusão acidental do runtime de desenvolvimento do React. Consulte
+o [relatório de refinamento](docs/etapa-11-refinamento.md) para medições e validações.

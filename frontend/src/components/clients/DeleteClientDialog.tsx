@@ -1,3 +1,4 @@
+import { captureDialogOpener, restoreDialogFocus, isDialogBackdropClick } from '../ui/dialog-focus';
 import { useEffect, useRef } from 'react';
 
 interface DeleteClientDialogProps {
@@ -21,9 +22,13 @@ export function DeleteClientDialog({
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [open]);
 
   return (
@@ -39,7 +44,7 @@ export function DeleteClientDialog({
         if (pending) event.preventDefault();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget && !pending) onClose();
+        if (isDialogBackdropClick(event) && !pending) onClose();
       }}
     >
       <p className="navigation-label">Ação permanente</p>

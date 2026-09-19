@@ -1,3 +1,4 @@
+import { useSubmitOnce } from '../components/ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -15,7 +16,7 @@ export function LoginPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
-  async function submit(input: LoginInput) {
+  const submit = useSubmitOnce(async (input: LoginInput) => {
     try {
       await signIn('login', input);
     } catch (error) {
@@ -24,7 +25,7 @@ export function LoginPage() {
           error instanceof ApiError ? error.message : 'Não foi possível entrar. Tente novamente.',
       });
     }
-  }
+  });
   return (
     <AuthLayout
       title="Entre no seu workspace"

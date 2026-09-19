@@ -1,3 +1,4 @@
+import { useSubmitOnce } from '../components/ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
@@ -15,7 +16,7 @@ export function RegisterPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
-  async function submit(input: RegisterInput) {
+  const submit = useSubmitOnce(async (input: RegisterInput) => {
     try {
       await signIn('register', {
         name: input.name,
@@ -31,7 +32,7 @@ export function RegisterPage() {
             : 'Não foi possível criar sua conta. Tente novamente.',
       });
     }
-  }
+  });
   return (
     <AuthLayout
       title="Crie sua conta"

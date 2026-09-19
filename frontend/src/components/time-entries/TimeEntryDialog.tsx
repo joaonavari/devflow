@@ -1,3 +1,5 @@
+import { captureDialogOpener, restoreDialogFocus, isDialogBackdropClick } from '../ui/dialog-focus';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
@@ -67,10 +69,14 @@ export function TimeEntryDialog({
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog?.open) {
       dialog?.showModal();
       dialog?.querySelector<HTMLElement>('[name="workDate"]')?.focus();
     }
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, []);
 
   function close() {
@@ -79,7 +85,7 @@ export function TimeEntryDialog({
     onClose();
   }
 
-  async function submit(input: TimeEntryFormInput) {
+  const submit = useSubmitOnce(async (input: TimeEntryFormInput) => {
     try {
       const saved = await mutation.mutateAsync(input);
       if (user) await queryClient.invalidateQueries({ queryKey: timeEntryKeys.all(user.id) });
@@ -99,7 +105,7 @@ export function TimeEntryDialog({
         form.setError('root', { message: 'Não foi possível salvar o registro.' });
       }
     }
-  }
+  });
 
   const selectedProject = entry?.project ?? fixedProject;
   return (
@@ -113,7 +119,7 @@ export function TimeEntryDialog({
         close();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) close();
+        if (isDialogBackdropClick(event)) close();
       }}
     >
       <div className="dialog-heading">
@@ -143,7 +149,14 @@ export function TimeEntryDialog({
         ) : (
           <div className="form-field">
             <label htmlFor={projectSelectId}>Projeto</label>
-            <select id={projectSelectId} {...form.register('projectId')}>
+            <select
+              id={projectSelectId}
+              aria-invalid={!!form.formState.errors.projectId}
+              aria-describedby={
+                form.formState.errors.projectId ? `${projectSelectId}-help` : undefined
+              }
+              {...form.register('projectId')}
+            >
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
@@ -151,7 +164,9 @@ export function TimeEntryDialog({
               ))}
             </select>
             {form.formState.errors.projectId && (
-              <p className="field-error">{form.formState.errors.projectId.message}</p>
+              <p id={`${projectSelectId}-help`} className="field-error">
+                {form.formState.errors.projectId.message}
+              </p>
             )}
           </div>
         )}
@@ -193,10 +208,15 @@ export function TimeEntryDialog({
             maxLength={1000}
             placeholder="Opcional — descreva o trabalho realizado"
             aria-invalid={!!form.formState.errors.description}
+            aria-describedby={
+              form.formState.errors.description ? `${descriptionId}-help` : undefined
+            }
             {...form.register('description')}
           />
           {form.formState.errors.description && (
-            <p className="field-error">{form.formState.errors.description.message}</p>
+            <p id={`${descriptionId}-help`} className="field-error">
+              {form.formState.errors.description.message}
+            </p>
           )}
         </div>
         {form.formState.errors.root && (
@@ -205,7 +225,12 @@ export function TimeEntryDialog({
           </p>
         )}
         <div className="dialog-actions">
-          <button className="secondary-button" type="button" onClick={close}>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={mutation.isPending}
+            onClick={close}
+          >
             Cancelar
           </button>
           <button

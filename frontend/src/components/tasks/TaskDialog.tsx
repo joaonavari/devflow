@@ -1,3 +1,5 @@
+import { captureDialogOpener, restoreDialogFocus, isDialogBackdropClick } from '../ui/dialog-focus';
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
@@ -70,6 +72,7 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();
@@ -77,6 +80,9 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
     } else if (!open && dialog.open) {
       dialog.close();
     }
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [open]);
 
   function close() {
@@ -85,7 +91,7 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
     onClose();
   }
 
-  async function submit(input: TaskFormInput) {
+  const submit = useSubmitOnce(async (input: TaskFormInput) => {
     try {
       const saved = await mutation.mutateAsync(input);
       if (user) {
@@ -108,7 +114,7 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
         setError('root', { message: 'Não foi possível salvar a tarefa.' });
       }
     }
-  }
+  });
 
   return (
     <dialog
@@ -121,7 +127,7 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
         close();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) close();
+        if (isDialogBackdropClick(event)) close();
       }}
     >
       <div className="dialog-heading">
@@ -156,9 +162,14 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
             maxLength={2000}
             placeholder="Opcional"
             aria-invalid={!!errors.description}
+            aria-describedby={errors.description ? `${descriptionId}-help` : undefined}
             {...register('description')}
           />
-          {errors.description && <p className="field-error">{errors.description.message}</p>}
+          {errors.description && (
+            <p id={`${descriptionId}-help`} className="field-error">
+              {errors.description.message}
+            </p>
+          )}
         </div>
         <div className="task-form-row">
           <div className="form-field">
@@ -201,7 +212,12 @@ export function TaskDialog({ open, projectId, task, onClose, onSaved }: TaskDial
           </p>
         )}
         <div className="dialog-actions">
-          <button className="secondary-button" type="button" onClick={close}>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={mutation.isPending}
+            onClick={close}
+          >
             Cancelar
           </button>
           <button

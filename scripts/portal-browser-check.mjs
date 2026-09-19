@@ -486,7 +486,7 @@ try {
   );
   await visitor.reload();
   await visitor.until('!!document.querySelector("#portal-project-title")');
-  for (const width of [320, 375, 768, 1024, 1440]) {
+  for (const width of [320, 360, 390, 430, 768, 1024, 1366, 1440]) {
     await visitor.viewport(width);
     await delay(100);
     assert.equal(
@@ -531,6 +531,9 @@ try {
   await admin.navigate(projectPath);
   await admin.until('!!document.querySelector("[data-portal-action=revoke]")');
   await admin.click('[data-portal-action="revoke"]');
+  await admin.until('!!document.querySelector("dialog[open] [data-confirm-action]")');
+  assert.equal(await admin.evaluate('document.activeElement.textContent.trim()'), 'Cancelar');
+  await admin.click('dialog[open] [data-confirm-action]');
   await admin.until('document.body.innerText.includes("Link revogado.")');
   await visitor.click('.portal-refresh button');
   await visitor.until(
@@ -551,6 +554,8 @@ try {
   await visitor.until('!!document.querySelector("#portal-project-title")');
   const beforeRotation = url;
   await admin.click('[data-portal-action="generate"]');
+  await admin.until('!!document.querySelector("dialog[open] [data-confirm-action]")');
+  await admin.click('dialog[open] [data-confirm-action]');
   await admin.until('!!document.querySelector("[data-portal-url]")');
   url = await admin.evaluate('document.querySelector("[data-portal-url]").value');
   assert.notEqual(beforeRotation, url);
@@ -569,12 +574,18 @@ try {
     'document.body.innerText.includes("Este link não está disponível ou expirou.")',
   );
   assert.equal(await visitor.evaluate('!!document.querySelector("#portal-project-title")'), false);
+  await admin.navigate(projectPath);
+  await admin.until(
+    '!!document.querySelector("[data-portal-action=generate]") && !document.querySelector("[data-portal-action=revoke]")',
+  );
   await admin.click('[data-portal-action="generate"]');
   await admin.until('!!document.querySelector("[data-portal-url]")');
   url = await admin.evaluate('document.querySelector("[data-portal-url]").value');
   await visitor.navigate(new URL(url).pathname);
   await visitor.until('!!document.querySelector("#portal-project-title")');
   await admin.click('[data-project-action="archive"]');
+  await admin.until('!!document.querySelector("dialog[open] [data-confirm-action]")');
+  await admin.click('dialog[open] [data-confirm-action]');
   await admin.until('!!document.querySelector("[data-project-action=restore]")');
   await visitor.reload();
   await visitor.until(
@@ -590,7 +601,7 @@ try {
   await admin.click('[aria-label="Excluir Planejamento interno revisado"]');
   await admin.click('.stage-delete-confirm .danger-link');
   await admin.until(`!document.querySelector('[data-stage-row="Planejamento interno revisado"]')`);
-  for (const width of [320, 375, 1440]) {
+  for (const width of [320, 360, 390, 430, 768, 1024, 1366, 1440]) {
     await admin.viewport(width);
     await delay(100);
     assert.equal(

@@ -465,7 +465,9 @@
       grid-auto-flow: initial;
       overflow: visible;
     }
+  }
 
+  @media (min-width: 80rem) {
     .tasks-filters {
       grid-template-columns: minmax(17rem, 1.5fr) repeat(4, minmax(9rem, 0.7fr));
     }

@@ -29,6 +29,11 @@
     margin: 0;
   }
 
+  dialog {
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+  }
+
   button,
   a {
     touch-action: manipulation;
@@ -50,6 +55,15 @@
 }
 
 @layer components {
+  /* Keep absolutely positioned accessible labels inside their scroll region. */
+  .clients-table-wrap,
+  .projects-table-wrap,
+  .tasks-table-wrap,
+  .hours-table-wrap,
+  .finance-table-wrap {
+    position: relative;
+  }
+
   .app-shell {
     min-height: 100svh;
   }
@@ -368,7 +382,7 @@
     color: var(--color-secondary);
   }
 
-  .empty-state h2 {
+  .empty-state :is(h1, h2) {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: var(--leading-normal);
@@ -489,5 +503,29 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 0ms;
+  }
+}
+
+@layer components {
+  .settings-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--spacing-6);
+    padding: var(--spacing-6);
+  }
+  .settings-details dt {
+    color: var(--color-secondary);
+    font-size: var(--text-xs);
+    margin-bottom: var(--spacing-2);
+  }
+  .settings-details dd {
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+  .settings-note {
+    color: var(--color-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    padding: 0 var(--spacing-6) var(--spacing-6);
   }
 }

@@ -1,3 +1,4 @@
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useId, useRef } from 'react';
@@ -7,6 +8,7 @@ import {
   saveStage,
   stageFormSchema,
   stageLabels,
+  portalErrorMessage,
   stageStatusSchema,
   type Stage,
   type StageInput,
@@ -48,7 +50,7 @@ export function StageDialog({
       if (opener instanceof HTMLElement) opener.focus();
     };
   }, []);
-  async function submit(input: StageInput) {
+  const submit = useSubmitOnce(async (input: StageInput) => {
     try {
       await mutation.mutateAsync(input);
       await onSaved();
@@ -56,7 +58,7 @@ export function StageDialog({
     } catch {
       /* Mutation displays the error. */
     }
-  }
+  });
   return (
     <dialog
       ref={ref}
@@ -104,7 +106,7 @@ export function StageDialog({
         </label>
         {mutation.isError && (
           <p role="alert" className="form-error">
-            {mutation.error.message}
+            {portalErrorMessage(mutation.error)}
           </p>
         )}
         <div className="dialog-actions">

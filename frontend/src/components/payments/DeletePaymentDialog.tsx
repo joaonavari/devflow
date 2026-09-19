@@ -1,3 +1,4 @@
+import { captureDialogOpener, restoreDialogFocus } from '../ui/dialog-focus';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { Payment } from '../../payments/payment-api';
@@ -21,9 +22,13 @@ export function DeletePaymentDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (payment && !dialog.open) dialog.showModal();
     if (!payment && dialog.open) dialog.close();
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [payment]);
   return (
     <dialog

@@ -1219,6 +1219,8 @@ try {
 
   await tab.navigate(projectPath);
   await tab.click('[data-project-action="archive"]');
+  await tab.until('!!document.querySelector("dialog[open] [data-confirm-action]")');
+  await tab.click('dialog[open] [data-confirm-action]');
   await tab.until(
     'document.body.innerText.includes("Projeto arquivado com sucesso.") && !!document.querySelector("[data-project-action=restore]")',
   );

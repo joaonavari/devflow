@@ -42,7 +42,8 @@
     "test:portal": "npm run test:portal --workspace @devflow/backend",
     "test:stages": "npm run test:stages --workspace @devflow/backend",
     "test:portal:browser": "node --import tsx scripts/portal-browser-check.mjs",
-    "test:portal:privacy": "node scripts/portal-privacy-check.mjs"
+    "test:portal:privacy": "node scripts/portal-privacy-check.mjs",
+    "test:refinement:browser": "node --import tsx scripts/refinement-browser-check.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

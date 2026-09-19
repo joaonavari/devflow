@@ -1,3 +1,4 @@
+import { captureDialogOpener, restoreDialogFocus } from '../ui/dialog-focus';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { formatDuration } from '../../time-entries/time-entry-format';
@@ -21,9 +22,13 @@ export function DeleteTimeEntryDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (entry && !dialog.open) dialog.showModal();
     if (!entry && dialog.open) dialog.close();
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [entry]);
 
   return (

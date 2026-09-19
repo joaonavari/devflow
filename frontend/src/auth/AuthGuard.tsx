@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { matchPath, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './auth-context';
 import { navigationItems } from '../routes/navigation';
 
@@ -31,11 +31,32 @@ export function AuthGuard({ guest = false }: { guest?: boolean }) {
       typeof destination === 'object' && destination !== null && 'from' in destination
         ? destination.from
         : undefined;
-    const path =
-      typeof from === 'string' && navigationItems.some((item) => item.path === from)
-        ? from
-        : '/dashboard';
+    let path = '/dashboard';
+    if (
+      typeof from === 'string' &&
+      from.startsWith('/') &&
+      !from.startsWith('//') &&
+      !from.includes('\\')
+    ) {
+      const destination = new URL(from, window.location.origin);
+      if (
+        destination.origin === window.location.origin &&
+        (navigationItems.some((item) => item.path === destination.pathname) ||
+          ['/clientes/:clientId', '/projetos/:projectId'].some((pattern) =>
+            matchPath(pattern, destination.pathname),
+          ))
+      )
+        path = destination.pathname + destination.search + destination.hash;
+    }
     return user ? <Navigate to={path} replace /> : <Outlet />;
   }
-  return user ? <Outlet /> : <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  return user ? (
+    <Outlet />
+  ) : (
+    <Navigate
+      to="/login"
+      state={{ from: location.pathname + location.search + location.hash }}
+      replace
+    />
+  );
 }

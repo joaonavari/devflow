@@ -436,7 +436,11 @@ export function FinancePage() {
                   </div>
                   {!payment.project.archivedAt && (
                     <div className="payment-row-actions">
-                      <button type="button" onClick={() => void changeStatus(payment)}>
+                      <button
+                        type="button"
+                        disabled={statusMutation.isPending}
+                        onClick={() => void changeStatus(payment)}
+                      >
                         {payment.status === 'PAID' ? (
                           <RotateCcw size={15} />
                         ) : (

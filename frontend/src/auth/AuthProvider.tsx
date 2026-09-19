@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { discoverSession, revokeSession, submitCredentials, type AuthUser } from './auth-api';
 import { AuthContext } from './auth-context';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -8,13 +9,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);
   const channel = useRef<BroadcastChannel | null>(null);
+  const queryClient = useQueryClient();
+  const identity = useRef<string | null | undefined>(undefined);
+  const acceptUser = useCallback(
+    (next: AuthUser | null) => {
+      const nextId = next?.id ?? null;
+      if (identity.current !== nextId) queryClient.clear();
+      identity.current = nextId;
+      setUser(next);
+    },
+    [queryClient],
+  );
 
   const restore = useCallback(async () => {
     const current = ++generation.current;
     try {
       const restored = await discoverSession();
       if (current !== generation.current) return;
-      setUser(restored);
+      acceptUser(restored);
       setError(null);
     } catch {
       if (current !== generation.current) return;
@@ -22,20 +34,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       if (current === generation.current) setLoading(false);
     }
-  }, []);
+  }, [acceptUser]);
 
   useEffect(() => {
     let active = true;
+    const current = ++generation.current;
     void discoverSession().then(
       (restored) => {
-        if (active) {
-          setUser(restored);
+        if (active && current === generation.current) {
+          acceptUser(restored);
           setError(null);
           setLoading(false);
         }
       },
       () => {
-        if (active) {
+        if (active && current === generation.current) {
           setError('Não foi possível verificar sua sessão. Confira a conexão e tente novamente.');
           setLoading(false);
         }
@@ -58,13 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', onFocus);
       channel.current?.close();
     };
-  }, [restore]);
+  }, [restore, acceptUser]);
 
   async function signIn(path: 'login' | 'register', input: object) {
     ++generation.current;
     const authenticated = await submitCredentials(path, input);
     ++generation.current;
-    setUser(authenticated);
+    acceptUser(authenticated);
     setError(null);
     setLoading(false);
     channel.current?.postMessage('changed');
@@ -74,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ++generation.current;
     await revokeSession();
     ++generation.current;
-    setUser(null);
+    acceptUser(null);
     setError(null);
     setLoading(false);
     channel.current?.postMessage('changed');

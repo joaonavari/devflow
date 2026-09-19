@@ -2,7 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Link2, ShieldCheck } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useAuth } from '../../auth/auth-context';
-import { generatePortal, getPortalState, portalKeys, revokePortal } from '../../portal/portal-api';
+import {
+  generatePortal,
+  getPortalState,
+  portalKeys,
+  revokePortal,
+  portalErrorMessage,
+} from '../../portal/portal-api';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { formatProjectTimestamp } from '../../projects/project-format';
 import type { Project } from '../../projects/project-api';
 
@@ -12,6 +19,7 @@ export function ProjectPortal({ project }: { project: Project }) {
   const [days, setDays] = useState(30);
   const [generated, setGenerated] = useState<{ url: string; updatedAt: string } | null>(null);
   const [notice, setNotice] = useState('');
+  const [confirming, setConfirming] = useState<'generate' | 'revoke' | null>(null);
   const fieldId = useId();
   const key = portalKeys.state(user?.id ?? '', project.id);
   const query = useQuery({
@@ -38,7 +46,7 @@ export function ProjectPortal({ project }: { project: Project }) {
     },
   });
   const url =
-    query.data?.active && generated?.updatedAt === query.data.link?.updatedAt
+    !query.isError && query.data?.active && generated?.updatedAt === query.data.link?.updatedAt
       ? generated?.url
       : undefined;
   async function copy() {
@@ -114,7 +122,8 @@ export function ProjectPortal({ project }: { project: Project }) {
               data-portal-action="generate"
               disabled={Boolean(project.archivedAt) || mutation.isPending}
               onClick={() => {
-                mutation.mutate('generate');
+                if (query.data.active) setConfirming('generate');
+                else mutation.mutate('generate');
               }}
             >
               {mutation.isPending
@@ -130,7 +139,7 @@ export function ProjectPortal({ project }: { project: Project }) {
                 disabled={mutation.isPending}
                 data-portal-action="revoke"
                 onClick={() => {
-                  mutation.mutate('revoke');
+                  setConfirming('revoke');
                 }}
               >
                 Revogar link
@@ -169,8 +178,26 @@ export function ProjectPortal({ project }: { project: Project }) {
       )}
       {mutation.isError && (
         <p className="form-error" role="alert">
-          {mutation.error.message}
+          {portalErrorMessage(mutation.error)}
         </p>
+      )}
+      {confirming && (
+        <ConfirmDialog
+          title={confirming === 'revoke' ? 'Revogar acesso ao portal?' : 'Substituir o link atual?'}
+          description={
+            confirming === 'revoke'
+              ? 'O link compartilhado deixará de funcionar. Para liberar o acesso novamente, será necessário gerar e compartilhar outro link.'
+              : 'O link atual deixará de funcionar imediatamente. Compartilhe o novo link com o cliente após a geração.'
+          }
+          confirmLabel={confirming === 'revoke' ? 'Revogar acesso' : 'Gerar novo link'}
+          onClose={() => {
+            setConfirming(null);
+          }}
+          onConfirm={() => {
+            mutation.mutate(confirming);
+            setConfirming(null);
+          }}
+        />
       )}
     </section>
   );

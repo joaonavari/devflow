@@ -1,6 +1,7 @@
 import { database } from '../config/database.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { DashboardQuery } from '../validators/dashboard.schemas.js';
+import { calculatedProgress } from './project.service.js';
 
 function dateFromApi(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
@@ -90,6 +91,7 @@ export async function getDashboard(userId: string, timeZone: string, query: Dash
     doneInPeriod,
     attentionTasks,
     hourGroups,
+    hourTotal,
     paymentGroups,
     overdueAggregate,
     paidInPeriodAggregate,
@@ -109,6 +111,8 @@ export async function getDashboard(userId: string, timeZone: string, query: Dash
         name: true,
         status: true,
         progress: true,
+        progressMode: true,
+        _count: { select: { tasks: true } },
         dueDate: true,
         updatedAt: true,
         client: { select: { id: true, name: true } },
@@ -147,6 +151,10 @@ export async function getDashboard(userId: string, timeZone: string, query: Dash
       _sum: { durationMinutes: true },
       orderBy: { _sum: { durationMinutes: 'desc' } },
       take: 5,
+    }),
+    database.timeEntry.aggregate({
+      where: { project: { userId }, workDate: { gte: dates.startDate } },
+      _sum: { durationMinutes: true },
     }),
     database.payment.groupBy({
       by: ['status'],
@@ -226,7 +234,21 @@ export async function getDashboard(userId: string, timeZone: string, query: Dash
         ]
       : [];
   });
-  const trackedMinutes = byProject.reduce((total, project) => total + project.totalMinutes, 0);
+  const trackedMinutes = hourTotal._sum.durationMinutes ?? 0;
+  const automaticIds = projects
+    .filter((project) => project.progressMode === 'AUTO')
+    .map((project) => project.id);
+  const completedGroups =
+    automaticIds.length === 0
+      ? []
+      : await database.task.groupBy({
+          by: ['projectId'],
+          where: { projectId: { in: automaticIds }, project: { userId }, status: 'DONE' },
+          _count: { _all: true },
+        });
+  const completedByProject = new Map(
+    completedGroups.map((group) => [group.projectId, group._count._all]),
+  );
   const taskCount = (status: 'TODO' | 'IN_PROGRESS') =>
     taskGroups.find((group) => group.status === status)?._count._all ?? 0;
   const todo = taskCount('TODO');
@@ -289,8 +311,12 @@ export async function getDashboard(userId: string, timeZone: string, query: Dash
       pendingAmount: pending,
       overdueAmount: overdue,
     },
-    projects: projects.map((project) => ({
+    projects: projects.map(({ progressMode, _count, ...project }) => ({
       ...project,
+      progress:
+        progressMode === 'AUTO'
+          ? calculatedProgress(_count.tasks, completedByProject.get(project.id) ?? 0)
+          : project.progress,
       dueDate: project.dueDate ? dateToApi(project.dueDate) : null,
     })),
     tasks: {

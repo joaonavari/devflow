@@ -4,7 +4,7 @@
   margin-block: 1.5rem;
   overflow-wrap: anywhere;
 }
-.portal-admin > :not(.detail-section-heading),
+.portal-admin > :not(.detail-section-heading):not(dialog),
 .portal-stages-admin > :not(.detail-section-heading):not(dialog) {
   margin-inline: 1rem;
 }

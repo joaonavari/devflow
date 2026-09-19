@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/navigation/Sidebar';
 import { Topbar } from '../components/navigation/Topbar';
@@ -36,13 +36,27 @@ export function AppLayout() {
     if (previousPath.current === pathname) return;
     previousPath.current = pathname;
 
+    let observer: MutationObserver | undefined;
     const frame = requestAnimationFrame(() => {
-      mainRef.current?.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
+      const focusHeading = () => {
+        const heading = mainRef.current?.querySelector<HTMLElement>('h1');
+        if (!heading || heading.getClientRects().length === 0) return false;
+        heading.focus({ preventScroll: true });
+        return true;
+      };
+      if (!focusHeading() && mainRef.current) {
+        mainRef.current.focus({ preventScroll: true });
+        observer = new MutationObserver(() => {
+          if (focusHeading()) observer?.disconnect();
+        });
+        observer.observe(mainRef.current, { childList: true, subtree: true });
+      }
       window.scrollTo({ top: 0, behavior: 'instant' });
     });
 
     return () => {
       cancelAnimationFrame(frame);
+      observer?.disconnect();
     };
   }, [pageTitle, pathname]);
 
@@ -72,7 +86,15 @@ export function AppLayout() {
         <Topbar pageTitle={pageTitle} menuOpen={menuOpen} onOpenMenu={openMenu} />
         <main id="main-content" className="main-content" ref={mainRef} tabIndex={-1}>
           <div className="page-container">
-            <Outlet />
+            <Suspense
+              fallback={
+                <div className="route-loading" role="status">
+                  Carregando página…
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

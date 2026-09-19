@@ -28,7 +28,13 @@ import {
   type TaskStatus,
 } from '../tasks/task-schemas';
 
-const baseFilters: TaskFilters = { search: '', status: '', priority: '', due: 'all' };
+const baseFilters: TaskFilters = {
+  search: '',
+  status: '',
+  priority: '',
+  due: 'all',
+  projectId: '',
+};
 
 export function TasksPage() {
   const { user } = useAuth();

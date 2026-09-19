@@ -232,12 +232,34 @@ void test('autenticação integrada ao PostgreSQL', async (suite) => {
     assert.equal(allowed.status, 204);
     assert.equal(allowed.headers.get('access-control-allow-origin'), env.APP_ORIGIN);
     assert.equal(allowed.headers.get('access-control-allow-credentials'), 'true');
+    for (const method of ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS']) {
+      assert(allowed.headers.get('access-control-allow-methods')?.split(', ').includes(method));
+    }
     const denied = await call('me', undefined, rotatedCookie, {
       Origin: 'https://attacker.example',
     });
     assert.equal(denied.status, 403);
     assert.equal(denied.headers.get('access-control-allow-origin'), null);
   });
+  await suite.test(
+    'privacidade HTTP também cobre respostas antecipadas e rotas desconhecidas',
+    async () => {
+      const responses = [
+        await call('me'),
+        await call('me', undefined, '', { Origin: 'https://attacker.example' }),
+        await fetch(`${base}/../../unknown`, { headers: { Origin: env.APP_ORIGIN } }),
+      ];
+      assert.deepEqual(
+        responses.map((response) => response.status),
+        [401, 403, 404],
+      );
+      for (const response of responses) {
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+        assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+      }
+    },
+  );
   await suite.test('validação rejeita ownership, senha truncável e fuso inválido', async () => {
     for (const extra of [
       { userId: randomUUID() },

@@ -18,7 +18,7 @@ export const originGuard: RequestHandler = (request, response, next) => {
   if (request.method === 'OPTIONS') {
     if (origin !== env.APP_ORIGIN)
       throw new AuthError(403, 'ORIGIN_DENIED', 'Origem da solicitação não permitida.');
-    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PATCH, DELETE, OPTIONS');
     response.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-DevFlow-Request');
     response.sendStatus(204);
     return;

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppRoutes } from './routes/AppRoutes';
 import { AuthProvider } from './auth/AuthProvider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,33 +18,35 @@ const PortalPage = lazy(() =>
 
 export function App() {
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <Routes>
-          <Route
-            path="/portal/:token"
-            element={
-              <Suspense
-                fallback={
-                  <div className="client-portal route-loading" role="status">
-                    Carregando portal…
-                  </div>
-                }
-              >
-                <PortalPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="*"
-            element={
-              <AuthProvider>
-                <AppRoutes />
-              </AuthProvider>
-            }
-          />
-        </Routes>
-      </QueryClientProvider>
-    </BrowserRouter>
+    <RouteErrorBoundary>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route
+              path="/portal/:token"
+              element={
+                <Suspense
+                  fallback={
+                    <div className="client-portal route-loading" role="status">
+                      Carregando portal…
+                    </div>
+                  }
+                >
+                  <PortalPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <AuthProvider>
+                  <AppRoutes />
+                </AuthProvider>
+              }
+            />
+          </Routes>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </RouteErrorBoundary>
   );
 }

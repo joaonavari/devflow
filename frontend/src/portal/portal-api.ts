@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { authenticatedFetch } from '../auth/auth-api';
+import { ApiError, authenticatedFetch } from '../auth/auth-api';
 export const stageStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED']);
 export const stageLabels = {
   PENDING: 'Pendente',
@@ -44,13 +44,19 @@ async function request(path: string, method = 'GET', body?: object) {
   if (!response.ok) {
     const error = z
       .object({ error: z.object({ message: z.string() }) })
-      .safeParse(await response.json());
-    throw new Error(
+      .safeParse(await response.json().catch(() => null));
+    throw new ApiError(
+      response.status,
       error.success ? error.data.error.message : 'Não foi possível concluir a solicitação.',
     );
   }
   if (response.status === 204) return undefined;
   return (await response.json()) as unknown;
+}
+export function portalErrorMessage(error: unknown) {
+  return error instanceof ApiError
+    ? error.message
+    : 'Não foi possível concluir a solicitação. Tente novamente.';
 }
 export async function getPortalState(id: string) {
   return z

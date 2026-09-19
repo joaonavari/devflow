@@ -89,6 +89,7 @@ export function ClientDetailPage() {
     return (
       <section className="client-not-found">
         <EmptyState
+          headingLevel={1}
           icon={UserRoundX}
           title="Cliente não encontrado"
           description="O cliente não existe ou não está disponível para sua conta."
@@ -104,6 +105,7 @@ export function ClientDetailPage() {
     return (
       <section className="client-not-found">
         <EmptyState
+          headingLevel={1}
           icon={UserRoundX}
           title="Não foi possível carregar o cliente"
           description="Confira sua conexão e tente novamente."

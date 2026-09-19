@@ -64,7 +64,6 @@ function NavigationGroup({ group, onNavigate, className = '' }: NavigationGroupP
           <li key={item.path}>
             <NavLink
               to={item.path}
-              end
               className={({ isActive }) => `navigation-link${isActive ? ' is-active' : ''}`}
               onClick={onNavigate}
             >

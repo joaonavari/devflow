@@ -1,3 +1,4 @@
+import { useSubmitOnce } from '../ui/useSubmitOnce';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
@@ -54,7 +55,7 @@ export function ProjectEditForm({ project, clients, onSaved }: ProjectEditFormPr
   });
   const progressMode = useWatch({ control, name: 'progressMode' });
 
-  async function submit(input: ProjectFormInput) {
+  const submit = useSubmitOnce(async (input: ProjectFormInput) => {
     try {
       const updated = await mutation.mutateAsync(input);
       reset(valuesFrom(updated));
@@ -75,7 +76,7 @@ export function ProjectEditForm({ project, clients, onSaved }: ProjectEditFormPr
         setError('root', { message: 'Não foi possível salvar as alterações.' });
       }
     }
-  }
+  });
 
   return (
     <form

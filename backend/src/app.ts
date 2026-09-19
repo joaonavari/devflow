@@ -16,6 +16,14 @@ import { portalRouter, stageRouter, portalPrivacy } from './routes/portal.routes
 export const app = express();
 
 app.disable('x-powered-by');
+app.use('/api', (_request, response, next) => {
+  response.set({
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+  });
+  next();
+});
 app.use('/api/v1/portal', portalPrivacy);
 app.use('/api', originGuard);
 app.use(express.json({ limit: '16kb' }));

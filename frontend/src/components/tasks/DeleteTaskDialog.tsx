@@ -1,3 +1,4 @@
+import { captureDialogOpener, restoreDialogFocus } from '../ui/dialog-focus';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
@@ -19,9 +20,13 @@ export function DeleteTaskDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = dialogRef.current;
+    const opener = captureDialogOpener(dialog);
     if (!dialog) return;
     if (taskTitle && !dialog.open) dialog.showModal();
     if (!taskTitle && dialog.open) dialog.close();
+    return () => {
+      restoreDialogFocus(opener, dialog);
+    };
   }, [taskTitle]);
 
   return (
