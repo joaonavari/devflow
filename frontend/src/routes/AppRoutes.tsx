@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { AppLayout } from '../layouts/AppLayout';
 import { AuthGuard } from '../auth/AuthGuard';
 
@@ -56,7 +56,6 @@ export function AppRoutes() {
         </Route>
         <Route element={<AuthGuard />}>
           <Route element={<AppLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/clientes" element={<ClientsPage />} />
             <Route path="/clientes/:clientId" element={<ClientDetailPage />} />

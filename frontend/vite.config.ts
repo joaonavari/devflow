@@ -13,6 +13,8 @@ const portalPrivacyPlugin: Plugin = {
         res.setHeader('Referrer-Policy', 'no-referrer');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       }
+      // Keep a private HTML shell even before JavaScript runs. Do not rewrite API calls.
+      if (/^\/portal(?:\/|\?|$)/i.test(req.url ?? '')) req.url = '/portal.html';
       next();
     });
   },
@@ -24,6 +26,7 @@ const portalPrivacyPlugin: Plugin = {
         res.setHeader('Referrer-Policy', 'no-referrer');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       }
+      if (/^\/portal(?:\/|\?|$)/i.test(req.url ?? '')) req.url = '/portal.html';
       next();
     });
   },
@@ -48,6 +51,15 @@ export default defineConfig(({ mode }) => {
     customLogger: logger,
     plugins: [portalPrivacyPlugin, react(), tailwindcss()],
     envDir: rootDirectory,
+    build: {
+      manifest: true,
+      rolldownOptions: {
+        input: {
+          index: fileURLToPath(new URL('./index.html', import.meta.url)),
+          portal: fileURLToPath(new URL('./portal.html', import.meta.url)),
+        },
+      },
+    },
     preview: { headers: { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' } },
     server: {
       headers: { 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' },

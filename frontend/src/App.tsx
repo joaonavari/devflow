@@ -1,7 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { AppRoutes } from './routes/AppRoutes';
-import { AuthProvider } from './auth/AuthProvider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
@@ -15,6 +13,12 @@ const queryClient = new QueryClient({
 const PortalPage = lazy(() =>
   import('./pages/PortalPage').then((module) => ({ default: module.PortalPage })),
 );
+const LandingPage = lazy(() =>
+  import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })),
+);
+const AuthenticatedApp = lazy(() =>
+  import('./routes/AuthenticatedApp').then((module) => ({ default: module.AuthenticatedApp })),
+);
 
 export function App() {
   return (
@@ -22,6 +26,20 @@ export function App() {
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
           <Routes>
+            <Route
+              path="/"
+              element={
+                <Suspense
+                  fallback={
+                    <div className="route-loading" role="status">
+                      Carregando DevFlow…
+                    </div>
+                  }
+                >
+                  <LandingPage />
+                </Suspense>
+              }
+            />
             <Route
               path="/portal/:token"
               element={
@@ -39,9 +57,15 @@ export function App() {
             <Route
               path="*"
               element={
-                <AuthProvider>
-                  <AppRoutes />
-                </AuthProvider>
+                <Suspense
+                  fallback={
+                    <div className="route-loading" role="status">
+                      Carregando página…
+                    </div>
+                  }
+                >
+                  <AuthenticatedApp />
+                </Suspense>
               }
             />
           </Routes>

@@ -3,7 +3,7 @@
 Plataforma full stack para freelancers gerenciarem clientes, projetos, tarefas,
 horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 
-## Estado atual: Etapa 11 — Refinamento
+## Estado atual: Landing pública
 
 - Monorepo com npm workspaces: `frontend` e `backend`.
 - React, TypeScript e Vite, com Tailwind CSS e layout autenticado responsivo.
@@ -19,24 +19,27 @@ horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 - Dashboard integrado com projetos, tarefas, horas, financeiro e atividades recentes.
 - Portal do cliente somente leitura, com link seguro, expiração, revogação e timeline de etapas visíveis.
 - Rotas privadas para dashboard, projetos, clientes, tarefas, financeiro, horas e configurações.
+- Landing pública em `/`, com screenshots reais do produto, recursos, fluxo de trabalho e acesso ao cadastro/login.
 
 Configurações mostra dados da conta e fuso horário em modo somente leitura.
 A Etapa 11 refina bundle, Dashboard, cache de sessão, UX, acessibilidade,
-responsividade e privacidade HTTP. CI/CD e deploy não fazem parte da entrega atual.
+responsividade e privacidade HTTP. A Landing preserva esses refinamentos e a área
+autenticada. CI/CD e deploy não fazem parte da entrega atual.
 
 Consulte os relatórios de cada etapa para detalhes de escopo, decisões e validações:
 
-| Etapa | Relatório                                            |
-| ----- | ---------------------------------------------------- |
-| 3     | [Autenticação](docs/etapa-3-autenticacao.md)         |
-| 4     | [Clientes](docs/etapa-4-clientes.md)                 |
-| 5     | [Projetos](docs/etapa-5-projetos.md)                 |
-| 6     | [Tasks & Kanban](docs/etapa-6-tasks-kanban.md)       |
-| 7     | [Registros de horas](docs/etapa-7-horas.md)          |
-| 8     | [Financeiro](docs/etapa-8-financeiro.md)             |
-| 9     | [Dashboard](docs/etapa-9-dashboard.md)               |
-| 10    | [Portal do Cliente](docs/etapa-10-portal-cliente.md) |
-| 11    | [Refinamento](docs/etapa-11-refinamento.md)          |
+| Etapa   | Relatório                                            |
+| ------- | ---------------------------------------------------- |
+| 3       | [Autenticação](docs/etapa-3-autenticacao.md)         |
+| 4       | [Clientes](docs/etapa-4-clientes.md)                 |
+| 5       | [Projetos](docs/etapa-5-projetos.md)                 |
+| 6       | [Tasks & Kanban](docs/etapa-6-tasks-kanban.md)       |
+| 7       | [Registros de horas](docs/etapa-7-horas.md)          |
+| 8       | [Financeiro](docs/etapa-8-financeiro.md)             |
+| 9       | [Dashboard](docs/etapa-9-dashboard.md)               |
+| 10      | [Portal do Cliente](docs/etapa-10-portal-cliente.md) |
+| 11      | [Refinamento](docs/etapa-11-refinamento.md)          |
+| Landing | [Landing pública](docs/landing-publica.md)           |
 
 ## Pré-requisitos
 
@@ -336,7 +339,8 @@ As rotas privadas compartilham o mesmo layout:
 A rota pública `/portal/:token` usa layout próprio, sem sidebar ou sessão
 administrativa. O acesso depende exclusivamente do token do link.
 
-A raiz redireciona para `/dashboard`. Visitantes são encaminhados para `/login`;
+A raiz `/` exibe a Landing pública, sem consultar a sessão. Seus CTAs levam a
+`/register` e `/login`. Visitantes das rotas privadas são encaminhados para `/login`;
 o login retorna à rota privada solicitada. `/login` e `/register` redirecionam
 usuários autenticados para `/dashboard`. Endereços desconhecidos exibem uma página
 de erro dentro do layout privado, com retorno para o dashboard.
@@ -691,3 +695,15 @@ O build do frontend seleciona explicitamente React de produção, mesmo quando o
 `.env` compartilhado usa `NODE_ENV=development` para a API local. Ele também
 rejeita a inclusão acidental do runtime de desenvolvimento do React. Consulte
 o [relatório de refinamento](docs/etapa-11-refinamento.md) para medições e validações.
+
+## Landing pública
+
+Com Vite e Chrome/CDP na porta 9222, execute `node scripts/landing-browser-check.mjs`.
+Para validar o preview, use `LANDING_ORIGIN=http://127.0.0.1:4173` com o mesmo comando.
+O teste usa um contexto isolado e respostas de API simuladas, sem alterar o banco.
+Valida oito larguras, CTAs, teclado, menu, reduced motion, isolamento dos chunks,
+deep links protegidos e Portal separado. Execute também `npm run test:portal:privacy`.
+
+A Landing usa capturas reais e fictícias apenas nos dados: Dashboard no Hero e
+seções visuais de Kanban, Financeiro e Portal. Dimensões, pesos, bundle, dados demo
+e privacidade estão no [relatório da Landing](docs/landing-publica.md). Não houve deploy.
