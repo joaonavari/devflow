@@ -19,6 +19,7 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:check": "npm run db:generate && tsx src/scripts/check-db.ts",
     "test:portal": "npm run db:generate && node --import tsx --test src/tests/portal.test.ts",

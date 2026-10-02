@@ -64,7 +64,7 @@ ESLint e TypeScript. O client e o adaptador PostgreSQL ficam no backend.
 Execute os comandos na raiz do repositório:
 
 ```sh
-cp .env.example .env
+cp -n .env.example .env
 npm ci
 ```
 
@@ -151,6 +151,47 @@ O backend e o Prisma CLI leem `.env` da raiz usando o carregador nativo do Node.
 Variáveis já definidas no processo têm prioridade. Zod valida a configuração do
 backend sem incluir os valores das variáveis nas mensagens de erro.
 
+## Banco local vs produção
+
+Local usa PostgreSQL via Docker Compose, com `DATABASE_URL` no `.env` da raiz.
+Mantenha esse arquivo e o volume atuais. `DIRECT_URL` é opcional no local: ausente
+ou vazia, o Prisma CLI continua usando `DATABASE_URL`; se definida, deve apontar
+para o mesmo banco local. Para criar migrations durante o desenvolvimento, use
+`npm run db:migrate:dev -- --name nome_da_alteracao` (`prisma migrate dev`).
+O script existente `db:migrate` permanece como equivalente.
+
+Produção usará Supabase PostgreSQL. Configure `DATABASE_URL` com o transaction
+pooler (porta `6543`) para o backend e `DIRECT_URL` com o session pooler (porta
+`5432`) para o Prisma CLI, ambos do mesmo projeto/banco. Os placeholders estão
+comentados em `.env.example`; use o host e o usuário exatos de Supabase Connect
+e codifique caracteres especiais da senha na URL. Guarde os valores reais no
+gerenciador de segredos do ambiente de produção/CI, sem substituir o `.env` local.
+`DATABASE_URL` e `DIRECT_URL` de produção nunca vão para o Git nem recebem prefixo
+`VITE_`. Arquivos `.env*` continuam ignorados, exceto `.env.example` sem segredos.
+
+No Prisma 7.10.0, a conexão do CLI é configurada em `backend/prisma.config.ts`,
+preferindo `DIRECT_URL` e usando `DATABASE_URL` como fallback local. O backend
+continua inicializando `PrismaPg` exclusivamente com `DATABASE_URL`.
+O campo `directUrl` foi removido no Prisma 7, portanto não é adicionado ao schema
+([referência do Prisma](https://docs.prisma.io/docs/orm/v7/reference/prisma-config-reference#datasourcedirecturl-removed)).
+O carregador continua lendo apenas `.env` da raiz; não seleciona `.env.production`
+automaticamente. Variáveis já injetadas no processo têm prioridade.
+
+Depois, com as duas URLs de produção injetadas e `DIRECT_URL` conferida, execute
+na raiz, no ambiente de produção/CI com o Prisma CLI instalado:
+
+```sh
+npm run db:migrate:deploy
+```
+
+Esse script existente executa `prisma migrate deploy` e aplica apenas migrations
+versionadas. Nunca use `migrate dev` em produção. O CLI é uma devDependency:
+o ambiente responsável pelas migrations deve instalá-la. O transaction pooler
+tem limitações de estado de sessão e prepared statements; a compatibilidade
+operacional e o TLS deverão ser verificados na etapa futura de conexão
+([guia do Supabase](https://supabase.com/docs/guides/database/prisma)).
+Esta preparação não conecta ao Supabase, não aplica migrations e não faz deploy.
+
 ## Health checks
 
 | Endpoint                   | Condição                         | Resposta                                         |
@@ -193,7 +234,7 @@ e é incluído na compilação do backend.
 Para criar uma nova migration após uma alteração de schema autorizada:
 
 ```sh
-npm run db:migrate -- --name nome_da_alteracao
+npm run db:migrate:dev -- --name nome_da_alteracao
 npm run db:generate
 ```
 
