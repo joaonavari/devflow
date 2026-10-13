@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { AccountLink } from '../components/landing/AccountLink';
 import { LandingBrand, LandingNavbar } from '../components/landing/LandingNavbar';
 import {
   ClientPortalSection,
@@ -11,6 +12,7 @@ import {
   HeroSection,
   WorkflowSection,
 } from '../components/landing/LandingSections';
+import { isShowcase } from '../site';
 import '../styles/landing.css';
 
 export function LandingPage() {
@@ -45,8 +47,8 @@ export function LandingPage() {
           <LandingBrand />
           <p>© 2026 DevFlow</p>
           <nav aria-label="Links do rodapé">
-            <Link to="/login">Entrar</Link>
-            <Link to="/register">Criar conta</Link>
+            {!isShowcase && <Link to="/login">Entrar</Link>}
+            <AccountLink>Criar conta</AccountLink>
           </nav>
         </div>
       </footer>

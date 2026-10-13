@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && node scripts/build.mjs",
+    "build:showcase": "VITE_SHOWCASE=true npm run build && rm dist/portal.html && cp dist/index.html dist/404.html",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit"
   },

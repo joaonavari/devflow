@@ -10,7 +10,8 @@ import {
   UsersRound,
   Wallet,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { publicAsset } from '../../site';
+import { AccountLink } from './AccountLink';
 import { ProductPreview, ProductScreenshot } from './ProductPreview';
 
 const features = [
@@ -67,9 +68,9 @@ export function HeroSection() {
         DevFlow.
       </p>
       <div className="landing-actions">
-        <Link to="/register" className="landing-button landing-button-primary">
+        <AccountLink className="landing-button landing-button-primary">
           Começar grátis <ArrowRight size={17} aria-hidden="true" />
-        </Link>
+        </AccountLink>
         <a href="#como-funciona" className="landing-button landing-button-secondary">
           Ver como funciona <ArrowDown size={16} aria-hidden="true" />
         </a>
@@ -93,7 +94,7 @@ export function ExecutionSection() {
           </p>
         </div>
         <ProductScreenshot
-          src="/images/devflow-kanban.webp"
+          src={publicAsset('images/devflow-kanban.webp')}
           alt="Kanban do DevFlow com tarefas organizadas por etapa."
           context="Projeto / Kanban"
           label="Execução"
@@ -120,7 +121,7 @@ export function FinanceSection() {
           </p>
         </div>
         <ProductScreenshot
-          src="/images/devflow-financeiro.webp"
+          src={publicAsset('images/devflow-financeiro.webp')}
           alt="Painel financeiro do DevFlow com valores pagos, pendentes e vencidos."
           context="Financeiro"
           label="Controle"
@@ -211,12 +212,12 @@ export function ClientPortalSection() {
             <LockKeyhole size={17} aria-hidden="true" />
             <span>Você escolhe o que fica visível para o cliente.</span>
           </p>
-          <Link to="/register" className="landing-text-link">
+          <AccountLink className="landing-text-link">
             Conhecer o DevFlow <ArrowRight size={17} aria-hidden="true" />
-          </Link>
+          </AccountLink>
         </div>
         <ProductScreenshot
-          src="/images/devflow-portal.webp"
+          src={publicAsset('images/devflow-portal.webp')}
           alt="Portal do cliente do DevFlow com progresso, etapas e tarefas públicas."
           context="Portal do cliente"
           label="Somente leitura"
@@ -265,9 +266,9 @@ export function FinalCta() {
         <span>Mais controle sobre seus projetos.</span>
       </h2>
       <p>Reúna sua rotina de freelancer em um único workspace.</p>
-      <Link to="/register" className="landing-button landing-button-primary">
+      <AccountLink className="landing-button landing-button-primary">
         Criar minha conta <ArrowRight size={17} aria-hidden="true" />
-      </Link>
+      </AccountLink>
     </section>
   );
 }

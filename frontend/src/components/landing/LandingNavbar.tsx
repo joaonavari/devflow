@@ -1,6 +1,8 @@
 import { Layers2, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isShowcase } from '../../site';
+import { AccountLink } from './AccountLink';
 
 export function LandingBrand() {
   return (
@@ -78,12 +80,14 @@ export function LandingNavbar() {
             </a>
           </div>
           <div className="landing-nav-actions">
-            <Link to="/login" className="landing-login">
-              Entrar
-            </Link>
-            <Link to="/register" className="landing-button landing-button-primary">
+            {!isShowcase && (
+              <Link to="/login" className="landing-login">
+                Entrar
+              </Link>
+            )}
+            <AccountLink className="landing-button landing-button-primary">
               Começar grátis
-            </Link>
+            </AccountLink>
           </div>
         </nav>
       </div>

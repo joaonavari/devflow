@@ -24,7 +24,8 @@ horas e recebimentos. Desenvolvimento incremental para portfólio profissional.
 Configurações mostra dados da conta e fuso horário em modo somente leitura.
 A Etapa 11 refina bundle, Dashboard, cache de sessão, UX, acessibilidade,
 responsividade e privacidade HTTP. A Landing preserva esses refinamentos e a área
-autenticada. CI/CD e deploy não fazem parte da entrega atual.
+autenticada. O deploy da aplicação completa não faz parte da entrega atual; apenas
+a Landing é publicada, em modo vitrine, no GitHub Pages.
 
 Consulte os relatórios de cada etapa para detalhes de escopo, decisões e validações:
 
@@ -301,6 +302,25 @@ npm run preview --workspace @devflow/frontend
 O preview serve os arquivos estáticos de `frontend/dist/` e não representa o
 deploy final. Na publicação futura será necessário encaminhar `/api` ao backend
 na mesma origem.
+
+## Landing no GitHub Pages
+
+A Landing é publicada em <https://joaonavari.github.io/devflow/> pelo workflow
+`.github/workflows/pages.yml`, a cada push na `main` que altere `frontend/`. Não
+há API nessa publicação, então o build usa o modo vitrine:
+
+```sh
+VITE_BASE_PATH=/devflow/ npm run build:showcase --workspace @devflow/frontend
+```
+
+- `VITE_SHOWCASE=true` troca os links de login e cadastro por um link para o
+  repositório e redireciona as demais rotas para a Landing.
+- `VITE_BASE_PATH` define o subcaminho em que o site é servido. Sem a variável,
+  o build continua usando `/`.
+- O script remove `portal.html` e copia `index.html` para `404.html`, para que
+  links diretos caiam na Landing.
+
+O build padrão (`npm run build`) não muda e continua gerando a aplicação completa.
 
 ## Estrutura
 

@@ -1,4 +1,5 @@
 import { LayoutDashboard, type LucideIcon } from 'lucide-react';
+import { publicAsset } from '../../site';
 
 export function ProductPreview() {
   return (
@@ -16,7 +17,7 @@ export function ProductPreview() {
       </div>
       <img
         className="landing-preview-image"
-        src="/images/devflow-dashboard.webp"
+        src={publicAsset('images/devflow-dashboard.webp')}
         width={1600}
         height={1000}
         alt="Dashboard do DevFlow com projetos, tarefas, horas e resumo financeiro."

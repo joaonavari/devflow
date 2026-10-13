@@ -48,6 +48,8 @@ export default defineConfig(({ mode }) => {
   const apiPort = env.API_PORT ?? '3001';
 
   return {
+    // Static hosts such as GitHub Pages serve the app from a subpath.
+    base: process.env.VITE_BASE_PATH ?? '/',
     customLogger: logger,
     plugins: [portalPrivacyPlugin, react(), tailwindcss()],
     envDir: rootDirectory,

@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
+import { isShowcase } from './site';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,7 +24,7 @@ const AuthenticatedApp = lazy(() =>
 export function App() {
   return (
     <RouteErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <QueryClientProvider client={queryClient}>
           <Routes>
             <Route
@@ -40,34 +41,40 @@ export function App() {
                 </Suspense>
               }
             />
-            <Route
-              path="/portal/:token"
-              element={
-                <Suspense
-                  fallback={
-                    <div className="client-portal route-loading" role="status">
-                      Carregando portal…
-                    </div>
+            {isShowcase ? (
+              <Route path="*" element={<Navigate to="/" replace />} />
+            ) : (
+              <>
+                <Route
+                  path="/portal/:token"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="client-portal route-loading" role="status">
+                          Carregando portal…
+                        </div>
+                      }
+                    >
+                      <PortalPage />
+                    </Suspense>
                   }
-                >
-                  <PortalPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="*"
-              element={
-                <Suspense
-                  fallback={
-                    <div className="route-loading" role="status">
-                      Carregando página…
-                    </div>
+                />
+                <Route
+                  path="*"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="route-loading" role="status">
+                          Carregando página…
+                        </div>
+                      }
+                    >
+                      <AuthenticatedApp />
+                    </Suspense>
                   }
-                >
-                  <AuthenticatedApp />
-                </Suspense>
-              }
-            />
+                />
+              </>
+            )}
           </Routes>
         </QueryClientProvider>
       </BrowserRouter>
